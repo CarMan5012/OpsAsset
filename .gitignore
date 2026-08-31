@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.env
+.venv
+env/
+venv/
+*.log
+.DS_Store
+Thumbs.db
+node_modules/
+frontend/node_modules/
+frontend/dist/
+.idea/
+.vscode/
+
+# 本地运行时数据与数据库
+data/*
+!data/.gitkeep
+!data/system_config.json
+

@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="50%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <linearGradient id="top-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#bae6fd" />
+      <stop offset="100%" stop-color="#38bdf8" />
+    </linearGradient>
+    <linearGradient id="left-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <linearGradient id="right-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0369a1" />
+      <stop offset="100%" stop-color="#0c4a6e" />
+    </linearGradient>
+  </defs>
+
+  <!-- 圆角发光背景容器 -->
+  <rect width="64" height="64" rx="16" fill="url(#bg-grad)" />
+  
+  <!-- 外边框微光 -->
+  <rect x="1" y="1" width="62" height="62" rx="15" stroke="#ffffff" stroke-opacity="0.2" stroke-width="1.5" />
+
+  <!-- 3D 云原生运维资产矩阵立方体 -->
+  <g transform="translate(0, 1)">
+    <!-- 顶部晶面 -->
+    <path d="M32 14L49 23.5L32 33L15 23.5L32 14Z" fill="url(#top-grad)" />
+    <!-- 左侧晶面 -->
+    <path d="M15 23.5L32 33V49L15 39.5V23.5Z" fill="url(#left-grad)" />
+    <!-- 右侧晶面 -->
+    <path d="M32 33L49 23.5V39.5L32 49V33Z" fill="url(#right-grad)" />
+
+    <!-- 顶部核心芯片 -->
+    <path d="M32 19L41 24L32 29L23 24L32 19Z" fill="#ffffff" fill-opacity="0.9" />
+    <circle cx="32" cy="24" r="2.5" fill="#0284c7" />
+
+    <!-- 算力与拓扑连接脉冲节点 -->
+    <circle cx="21" cy="32" r="2" fill="#34d399" />
+    <circle cx="27" cy="39" r="2" fill="#67e8f9" />
+    <circle cx="37" cy="39" r="2" fill="#93c5fd" />
+    <circle cx="43" cy="32" r="2" fill="#a78bfa" />
+    
+    <!-- 内部科技连接线 -->
+    <path d="M21 32L27 39M37 39L43 32" stroke="#ffffff" stroke-width="1.2" stroke-opacity="0.6" stroke-linecap="round" />
+  </g>
+</svg>

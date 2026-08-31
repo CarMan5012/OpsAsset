@@ -1,0 +1,18 @@
+services:
+  ops-asset:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ops-asset:latest
+    container_name: ops-asset-app
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      # 持久化挂载 SQLite 数据库文件
+      - ./data:/data
+    environment:
+      - DATABASE_URL=sqlite:////data/asset.db
+      # 数据库全库透明加密密钥 (支持从私有 .env 文件动态加载，避免直接在仓库中暴露真实生产密钥)
+      - DATABASE_SECRET_KEY=${DATABASE_SECRET_KEY:-your_secure_db_secret_key_here}
+      - TZ=Asia/Shanghai
