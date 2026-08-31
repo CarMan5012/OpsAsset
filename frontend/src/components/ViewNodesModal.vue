@@ -129,32 +129,56 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="cpu_cores" label="CPU" width="80" align="center" sortable :formatter="formatCpuCell" />
-      <el-table-column prop="memory_gb" label="内存" width="85" align="center" sortable :formatter="formatMemCell" />
-      <el-table-column prop="disk_gb" label="数据盘" width="95" align="center" sortable :formatter="formatDiskCell" />
+      <el-table-column prop="cpu_cores" label="CPU" width="80" align="center" sortable>
+        <template #default="{ row }">
+          <div class="cell-box">
+            <span v-if="row.cpu_cores && Number(row.cpu_cores) > 0">{{ row.cpu_cores }} 核</span>
+          </div>
+        </template>
+      </el-table-column>
 
+      <el-table-column prop="memory_gb" label="内存" width="85" align="center" sortable>
+        <template #default="{ row }">
+          <div class="cell-box">
+            <span v-if="row.memory_gb && Number(row.memory_gb) > 0">{{ formatStorageFull(row.memory_gb) }}</span>
+          </div>
+        </template>
+      </el-table-column>
 
-
+      <el-table-column prop="disk_gb" label="数据盘" width="95" align="center" sortable>
+        <template #default="{ row }">
+          <div class="cell-box">
+            <span v-if="row.disk_gb && Number(row.disk_gb) > 0">{{ formatStorageFull(row.disk_gb) }}</span>
+          </div>
+        </template>
+      </el-table-column>
 
       <el-table-column prop="arch" label="架构" width="80" align="center">
         <template #default="{ row }">
-          <el-tag v-if="row.arch" size="small" :type="row.arch === 'arm64' ? 'warning' : 'info'">{{ getArchLabel(row.arch) }}</el-tag>
+          <div class="cell-box">
+            <el-tag v-if="row.arch" size="small" :type="row.arch === 'arm64' ? 'warning' : 'info'">{{ getArchLabel(row.arch) }}</el-tag>
+          </div>
         </template>
       </el-table-column>
 
       <el-table-column prop="os" label="操作系统" min-width="140" show-overflow-tooltip>
         <template #default="{ row }">
-          <span v-if="row.os" style="font-size: 12px; color: #475569;">{{ row.os }}</span>
+          <div class="cell-box">
+            <span v-if="row.os" style="font-size: 12px; color: #475569;">{{ row.os }}</span>
+          </div>
         </template>
       </el-table-column>
 
       <el-table-column prop="kernel_version" label="内核版本" width="115" align="center">
         <template #default="{ row }">
-          <el-tooltip v-if="row.kernel_version" :content="row.kernel_version" placement="top" effect="dark">
-            <span class="kernel-badge">{{ getCleanKernel(row.kernel_version) }}</span>
-          </el-tooltip>
+          <div class="cell-box">
+            <el-tooltip v-if="row.kernel_version" :content="row.kernel_version" placement="top" effect="dark">
+              <span class="kernel-badge">{{ getCleanKernel(row.kernel_version) }}</span>
+            </el-tooltip>
+          </div>
         </template>
       </el-table-column>
+
     </el-table>
 
     <template #footer>
