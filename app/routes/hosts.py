@@ -105,8 +105,8 @@ def list_hosts(
         count_query = count_query.filter(*filters)
     total = count_query.scalar() or 0
 
-    # 4. 动态排序映射与规范化
-    real_order = (sort_order or order or "desc").lower().strip()
+    # 4. 动态排序映射与规范化 (默认按添加时间正序升序排列)
+    real_order = (sort_order or order or "asc").lower().strip()
     is_asc = real_order in ["asc", "ascending"]
 
     sort_column_map = {
@@ -141,7 +141,8 @@ def list_hosts(
         else:
             data_query = data_query.order_by(sort_col.desc(), Host.id.desc())
     else:
-        data_query = data_query.order_by(Host.id.desc())
+        data_query = data_query.order_by(Host.id.asc())
+
 
     hosts = data_query.offset((page - 1) * size).limit(size).all()
 
@@ -177,20 +178,26 @@ def create_host(host_in: HostCreate, db: Session = Depends(get_db)):
     db.add(host)
     db.flush()
 
-    # 处理关联集群
+    # 处理关联集群 (安全兼容对象与字典结构)
     if host_in.clusters:
         for item in host_in.clusters:
-            cluster = db.query(Cluster).filter(Cluster.id == item.host_id).first()
-            # 注意：此处item结构复用，item.host_id 传入的是 cluster_id
-            # 兼容处理
-            target_cluster_id = getattr(item, 'cluster_id', getattr(item, 'host_id', None))
+            if isinstance(item, dict):
+                target_cluster_id = item.get("cluster_id") or item.get("host_id")
+                role = item.get("role") or "Worker"
+            else:
+                target_cluster_id = getattr(item, "cluster_id", getattr(item, "host_id", None))
+                role = getattr(item, "role", "Worker") or "Worker"
+
             if target_cluster_id:
-                rel = HostClusterRelation(
-                    host_id=host.id,
-                    cluster_id=target_cluster_id,
-                    role=item.role or "Worker"
-                )
-                db.add(rel)
+                cluster_exist = db.query(Cluster).filter(Cluster.id == target_cluster_id).first()
+                if cluster_exist:
+                    rel = HostClusterRelation(
+                        host_id=host.id,
+                        cluster_id=target_cluster_id,
+                        role=role
+                    )
+                    db.add(rel)
+
 
     db.commit()
     db.refresh(host)

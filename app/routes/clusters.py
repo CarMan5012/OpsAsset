@@ -85,7 +85,9 @@ def create_cluster(cluster_in: ClusterCreate, db: Session = Depends(get_db)):
     db.add(cluster)
     db.commit()
     db.refresh(cluster)
+    invalidate_dashboard_cache()
     return format_cluster_response(cluster)
+
 
 @router.get("/{cluster_id}", response_model=ClusterResponse)
 def get_cluster(cluster_id: int, db: Session = Depends(get_db)):

@@ -132,7 +132,6 @@
           <div style="border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden;" v-loading="previewLoading">
             <el-table
               :data="previewList"
-              :span-method="previewSpanMethod"
               size="small"
               stripe
               border
@@ -140,6 +139,7 @@
               style="width: 100%; font-size: 11.5px;"
               empty-text="暂无匹配数据"
             >
+
               <el-table-column
                 v-for="colKey in activeColumnsKeys"
                 :key="colKey"

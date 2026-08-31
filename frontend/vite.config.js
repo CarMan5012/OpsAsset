@@ -23,8 +23,9 @@ export default defineConfig({
   },
   build: {
     outDir: resolve(__dirname, '../app/static'),
-    emptyOutDir: false,
+    emptyOutDir: true,
     chunkSizeWarningLimit: 1500,
+
     rollupOptions: {
       output: {
         manualChunks: {

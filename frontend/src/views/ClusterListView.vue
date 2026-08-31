@@ -426,10 +426,25 @@ const handleDeleteCluster = (row) => {
   }).catch(() => {})
 }
 
+const filterByClusterId = (clusterId) => {
+  if (!clusterId) return
+  const target = props.clusterList.find(c => c.id === clusterId)
+  if (target) {
+    clusterFilter.keyword = target.name
+    clusterFilter.env = ''
+    clusterFilter.cluster_type = ''
+    clusterPagination.page = 1
+    // 自动打开节点弹窗
+    openViewNodesDialog(target)
+  }
+}
+
 defineExpose({
   openCreateClusterDialog,
   openEditClusterDialog,
   openBindNodeDialog,
-  openViewNodesDialog
+  openViewNodesDialog,
+  filterByClusterId
 })
 </script>
+

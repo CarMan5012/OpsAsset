@@ -98,7 +98,6 @@
               {{ ip }}
             </span>
           </div>
-          <span v-else style="color: #cbd5e1; font-size: 12px;">-</span>
         </template>
       </el-table-column>
 
@@ -109,13 +108,12 @@
               {{ p }}
             </span>
           </div>
-          <span v-else style="color: #cbd5e1; font-size: 12px;">-</span>
         </template>
       </el-table-column>
 
       <el-table-column prop="status" label="状态" width="105" align="center">
         <template #default="{ row }">
-          <span class="status-tag"
+          <span v-if="row.status" class="status-tag"
             :style="{
               backgroundColor: getStatusStyle(row.status, metaConfig).backgroundColor,
               color: getStatusStyle(row.status, metaConfig).color,
@@ -131,23 +129,12 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="cpu_cores" label="CPU" width="80" align="center" sortable>
-        <template #default="{ row }">
-          <span v-if="row.cpu_cores && row.cpu_cores > 0">{{ row.cpu_cores }} 核</span>
-        </template>
-      </el-table-column>
+      <el-table-column prop="cpu_cores" label="CPU" width="80" align="center" sortable :formatter="formatCpuCell" />
+      <el-table-column prop="memory_gb" label="内存" width="85" align="center" sortable :formatter="formatMemCell" />
+      <el-table-column prop="disk_gb" label="数据盘" width="95" align="center" sortable :formatter="formatDiskCell" />
 
-      <el-table-column prop="memory_gb" label="内存" width="85" align="center" sortable>
-        <template #default="{ row }">
-          <span v-if="row.memory_gb && row.memory_gb > 0">{{ formatStorageValue(row.memory_gb) }} {{ formatStorageUnit(row.memory_gb) }}</span>
-        </template>
-      </el-table-column>
 
-      <el-table-column prop="disk_gb" label="数据盘" width="95" align="center" sortable>
-        <template #default="{ row }">
-          <span v-if="row.disk_gb && row.disk_gb > 0">{{ formatStorageValue(row.disk_gb) }} {{ formatStorageUnit(row.disk_gb) }}</span>
-        </template>
-      </el-table-column>
+
 
       <el-table-column prop="arch" label="架构" width="80" align="center">
         <template #default="{ row }">
@@ -222,7 +209,23 @@ const getEnvLabel = (key) => getEnvLabelUtil(key, props.metaConfig)
 const getArchLabel = (key) => getArchLabelUtil(key, props.metaConfig)
 const getStatusLabel = (key) => getStatusLabelUtil(key, props.metaConfig)
 
+const formatCpuCell = (row) => {
+  const v = Number(row.cpu_cores)
+  return v > 0 ? `${v} 核` : ''
+}
+
+const formatMemCell = (row) => {
+  const v = Number(row.memory_gb)
+  return v > 0 ? formatStorageFull(v) : ''
+}
+
+const formatDiskCell = (row) => {
+  const v = Number(row.disk_gb)
+  return v > 0 ? formatStorageFull(v) : ''
+}
+
 const hasClusterRoles = (type) => {
+
   if (!type || !props.metaConfig?.cluster_types) return false
   const ct = props.metaConfig.cluster_types.find(c => c.key === type)
   return ct && ct.roles && ct.roles.length > 0

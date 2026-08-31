@@ -3,12 +3,12 @@
  */
 
 export function formatDateTime(str) {
-  if (!str) return '-'
+  if (!str) return ''
   return String(str).replace('T', ' ').slice(0, 19)
 }
 
 export function formatStorageValue(gb) {
-  if (!gb || isNaN(gb)) return 0
+  if (gb === undefined || gb === null || gb === '' || isNaN(gb) || Number(gb) <= 0) return ''
   const num = Number(gb)
   if (num >= 1024) {
     const tb = num / 1024
@@ -18,16 +18,19 @@ export function formatStorageValue(gb) {
 }
 
 export function formatStorageUnit(gb) {
-  if (!gb || isNaN(gb)) return 'GB'
+  if (gb === undefined || gb === null || gb === '' || isNaN(gb) || Number(gb) <= 0) return ''
   return Number(gb) >= 1024 ? 'TB' : 'GB'
 }
 
 export function formatStorageFull(gb) {
-  if (!gb || isNaN(gb)) return '0 GB'
+  if (gb === undefined || gb === null || gb === '' || isNaN(gb) || Number(gb) <= 0) return ''
   const val = formatStorageValue(gb)
   const unit = formatStorageUnit(gb)
+  if (!val || Number(val) <= 0) return ''
   return `${val} ${unit}`
 }
+
+
 
 export function getCleanKernel(kernel) {
   if (!kernel) return ''
@@ -331,9 +334,10 @@ export function formatHostExportRow(row, metaConfig, index) {
   }
   const clustersDisplay = clustersList.length > 0 ? clustersList.join(', ') : ''
 
-  const cpuStr = (row.cpu_cores !== undefined && row.cpu_cores !== null && row.cpu_cores > 0) ? `${row.cpu_cores} 核` : ''
-  const memStr = (row.memory_gb !== undefined && row.memory_gb !== null && row.memory_gb > 0) ? formatStorageFull(row.memory_gb) : ''
-  const diskStr = (row.disk_gb !== undefined && row.disk_gb !== null && row.disk_gb > 0) ? formatStorageFull(row.disk_gb) : ''
+  const cpuStr = (row.cpu_cores !== undefined && row.cpu_cores !== null && row.cpu_cores !== '' && Number(row.cpu_cores) > 0) ? `${row.cpu_cores} 核` : ''
+  const memStr = (row.memory_gb !== undefined && row.memory_gb !== null && row.memory_gb !== '' && Number(row.memory_gb) > 0) ? formatStorageFull(row.memory_gb) : ''
+  const diskStr = (row.disk_gb !== undefined && row.disk_gb !== null && row.disk_gb !== '' && Number(row.disk_gb) > 0) ? formatStorageFull(row.disk_gb) : ''
+
 
   return {
     id: row.id,

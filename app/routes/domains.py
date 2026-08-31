@@ -379,6 +379,8 @@ def check_single_domain_dns(domain_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="域名资产不存在")
     res = do_resolve_and_compare(domain)
     db.commit()
+    from app.routes.dashboard import invalidate_dashboard_cache
+    invalidate_dashboard_cache()
     return res
 
 @router.post("/check-all-dns", response_model=List[DomainDnsCheckResult])
@@ -389,4 +391,7 @@ def check_all_domains_dns(db: Session = Depends(get_db)):
         res = do_resolve_and_compare(d)
         results.append(res)
     db.commit()
+    from app.routes.dashboard import invalidate_dashboard_cache
+    invalidate_dashboard_cache()
     return results
+

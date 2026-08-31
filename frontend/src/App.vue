@@ -168,7 +168,13 @@ const refreshAll = async () => {
 
 const handleFilterClusterFromHost = (clusterId) => {
   switchTab('clusters')
+  setTimeout(() => {
+    if (clusterListViewRef.value?.filterByClusterId) {
+      clusterListViewRef.value.filterByClusterId(clusterId)
+    }
+  }, 120)
 }
+
 
 const handleConfigSaved = async (newConfig) => {
   if (newConfig) {

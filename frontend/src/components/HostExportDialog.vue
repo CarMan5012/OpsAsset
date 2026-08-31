@@ -121,7 +121,6 @@
         <div v-else class="preview-table-wrapper" v-loading="previewLoading">
           <el-table
             :data="previewList"
-            :span-method="previewSpanMethod"
             size="small"
             border
             stripe
@@ -129,6 +128,7 @@
             style="width: 100%; font-size: 12px;"
             empty-text="暂无匹配数据"
           >
+
             <el-table-column
               v-for="colKey in activeColumnsKeys"
               :key="colKey"

@@ -143,8 +143,8 @@ def handle_export_assets(
                 )
             )
 
-    # 2. 动态排序 (默认 id desc，保证与主机资产列表完全一致的最新数据展示顺序)
-    real_order = (sort_order or order or "desc").lower().strip()
+    # 4. 动态排序映射与规范化 (默认按添加时间正序升序)
+    real_order = (sort_order or order or "asc").lower().strip()
     is_asc = real_order in ["asc", "ascending"]
 
     sort_column_map = {
@@ -173,7 +173,7 @@ def handle_export_assets(
         else:
             query = query.order_by(sort_col.desc(), Host.id.desc())
     else:
-        query = query.order_by(Host.id.desc())
+        query = query.order_by(Host.id.asc())
 
     hosts = query.all()
 

@@ -38,143 +38,216 @@
         </div>
       </div>
 
-      <!-- 主机表格 (所有字段独立展示，支持多维度排序与同公网IP跨行智能合并) -->
-      <el-table :data="hostsData.items" style="width: 100%" max-height="calc(100vh - 245px)"
-        :span-method="hostSpanMethod" @selection-change="handleSelectionChange" @sort-change="handleSortChange"
-        :default-sort="{ prop: 'id', order: 'descending' }" v-loading="loading">
-        
+      <!-- 主机表格 (所有字段独立展示，支持多维度排序与等宽精美排版) -->
+      <el-table :data="hostsData.items" table-layout="fixed" style="width: 100%" max-height="calc(100vh - 245px)"
+        @selection-change="handleSelectionChange" @sort-change="handleSortChange"
+        :default-sort="{ prop: 'id', order: 'ascending' }" v-loading="loading">
+
         <el-table-column type="selection" width="45" align="center" fixed="left"></el-table-column>
         
         <el-table-column type="index" label="#" width="55" align="center" fixed="left" :index="(i) => (hostsData.page - 1) * hostsData.size + i + 1">
           <template #default="{ $index }">
-            <span style="font-family: 'JetBrains Mono'; font-size: 12px; color: #64748b; font-weight: 600;">
+            <span style="font-family: 'JetBrains Mono'; font-size: 12px; color: #64748b;">
               {{ (hostsData.page - 1) * hostsData.size + $index + 1 }}
             </span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="hostname" label="主机名" min-width="150" fixed="left" sortable="custom">
+        <el-table-column prop="hostname" label="主机名" width="150" fixed="left" sortable="custom" show-overflow-tooltip>
           <template #default="{ row }">
             <span style="font-weight: 600; color: #0f172a;">{{ row.hostname }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="private_ip" label="内网IP" min-width="155" fixed="left" sortable="custom">
+        <el-table-column prop="private_ip" label="内网IP" width="145" fixed="left" sortable="custom">
           <template #default="{ row }">
             <span class="ip-code" @click="copyText(row.private_ip)" title="点击复制">{{ row.private_ip }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="public_ip" label="外网 IP" min-width="260" sortable="custom">
+        <el-table-column prop="public_ip" label="外网 IP" width="160" sortable="custom" show-overflow-tooltip>
           <template #default="{ row }">
-            <div v-if="parsePublicIps(row.public_ip).length > 0" class="public-ip-group-card">
-              <span v-for="(ip, idx) in parsePublicIps(row.public_ip)" :key="idx" class="ip-code ip-code-public"
-                @click="copyText(ip)" :title="'点击复制: ' + ip">
-                {{ ip }}
-              </span>
+            <div class="cell-box">
+              <div v-if="parsePublicIps(row.public_ip).length > 0" class="public-ip-group-card">
+                <span v-for="(ip, idx) in parsePublicIps(row.public_ip)" :key="idx" class="ip-code ip-code-public"
+                  @click="copyText(ip)" :title="'点击复制: ' + ip">
+                  {{ ip }}
+                </span>
+              </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column prop="open_ports" label="开放端口" min-width="240" sortable="custom">
+        <el-table-column prop="open_ports" label="开放端口" width="160" sortable="custom" show-overflow-tooltip>
           <template #default="{ row }">
-            <div v-if="getAllHostPorts(row).length > 0" style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
-              <span v-for="(p, idx) in getAllHostPorts(row)" :key="idx"
-                class="port-badge" :class="{ 'port-badge-range': isPortRange(p) }"
-                @click="copyText(p)" :title="isPortRange(p) ? '点击复制端口范围: ' + p : '点击复制端口: ' + p">
-                {{ p }}
-              </span>
+            <div class="cell-box">
+              <div v-if="getAllHostPorts(row).length > 0" style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
+                <span v-for="(p, idx) in getAllHostPorts(row)" :key="idx"
+                  class="port-badge" :class="{ 'port-badge-range': isPortRange(p) }"
+                  @click="copyText(p)" :title="isPortRange(p) ? '点击复制端口范围: ' + p : '点击复制端口: ' + p">
+                  {{ p }}
+                </span>
+              </div>
             </div>
           </template>
         </el-table-column>
 
         <el-table-column prop="env" label="环境" width="95" align="center" sortable="custom">
           <template #default="{ row }">
-            <span v-if="row.env" class="env-tag" :class="row.env" style="white-space: nowrap; display: inline-block;">{{ getEnvLabel(row.env) }}</span>
+            <div class="cell-box">
+              <span v-if="row.env" class="env-tag" :class="row.env" style="white-space: nowrap; display: inline-block;">{{ getEnvLabel(row.env) }}</span>
+            </div>
           </template>
         </el-table-column>
 
-        <el-table-column prop="status" label="状态" width="105" align="center" sortable="custom">
+        <el-table-column prop="status" label="状态" width="100" align="center" sortable="custom">
           <template #default="{ row }">
-            <span v-if="row.status" class="status-tag"
-              :style="{
-                backgroundColor: getStatusStyle(row.status, metaConfig).backgroundColor,
-                color: getStatusStyle(row.status, metaConfig).color,
-                borderColor: getStatusStyle(row.status, metaConfig).borderColor
-              }">
-              <span class="status-indicator"
+            <div class="cell-box">
+              <span v-if="row.status" class="status-tag"
                 :style="{
-                  backgroundColor: getStatusStyle(row.status, metaConfig).dotColor,
-                  boxShadow: '0 0 0 2px ' + getStatusStyle(row.status, metaConfig).color + '33'
-                }"></span>
-              {{ getStatusLabel(row.status) }}
-            </span>
+                  backgroundColor: getStatusStyle(row.status, metaConfig).backgroundColor,
+                  color: getStatusStyle(row.status, metaConfig).color,
+                  borderColor: getStatusStyle(row.status, metaConfig).borderColor
+                }">
+                <span class="status-indicator"
+                  :style="{
+                    backgroundColor: getStatusStyle(row.status, metaConfig).dotColor,
+                    boxShadow: '0 0 0 2px ' + getStatusStyle(row.status, metaConfig).color + '33'
+                  }"></span>
+                {{ getStatusLabel(row.status) }}
+              </span>
+            </div>
           </template>
         </el-table-column>
 
         <el-table-column prop="cpu_cores" label="CPU" width="80" align="center" sortable="custom">
           <template #default="{ row }">
-            <span v-if="row.cpu_cores && row.cpu_cores > 0" style="font-family: 'JetBrains Mono'; font-weight: 600;">{{ row.cpu_cores }} 核</span>
+            <div class="cell-box">
+              <span v-if="row.cpu_cores && Number(row.cpu_cores) > 0">{{ row.cpu_cores }} 核</span>
+            </div>
           </template>
         </el-table-column>
 
         <el-table-column prop="memory_gb" label="内存" width="90" align="center" sortable="custom">
           <template #default="{ row }">
-            <span v-if="row.memory_gb && row.memory_gb > 0" style="font-family: 'JetBrains Mono';">{{ formatStorageValue(row.memory_gb) }} {{ formatStorageUnit(row.memory_gb) }}</span>
+            <div class="cell-box">
+              <span v-if="row.memory_gb && Number(row.memory_gb) > 0">{{ formatStorageFull(row.memory_gb) }}</span>
+            </div>
           </template>
         </el-table-column>
 
         <el-table-column prop="disk_gb" label="数据盘" width="95" align="center" sortable="custom">
           <template #default="{ row }">
-            <span v-if="row.disk_gb && row.disk_gb > 0" style="font-family: 'JetBrains Mono'; font-weight: 600;">{{ formatStorageValue(row.disk_gb) }} {{ formatStorageUnit(row.disk_gb) }}</span>
+            <div class="cell-box">
+              <span v-if="row.disk_gb && Number(row.disk_gb) > 0">{{ formatStorageFull(row.disk_gb) }}</span>
+            </div>
           </template>
         </el-table-column>
+
 
         <el-table-column prop="arch" label="架构" width="85" align="center" sortable="custom">
           <template #default="{ row }">
-            <el-tag v-if="row.arch" size="small" :type="row.arch === 'arm64' ? 'warning' : 'info'" style="font-family: 'JetBrains Mono';">
-              {{ getArchLabel(row.arch) }}
-            </el-tag>
+            <div class="cell-box">
+              <el-tag v-if="row.arch" size="small" :type="row.arch === 'arm64' ? 'warning' : 'info'" style="font-family: 'JetBrains Mono';">
+                {{ getArchLabel(row.arch) }}
+              </el-tag>
+            </div>
           </template>
         </el-table-column>
 
-        <el-table-column prop="os" label="操作系统" min-width="140" show-overflow-tooltip sortable="custom">
+        <el-table-column prop="os" label="操作系统" width="150" show-overflow-tooltip sortable="custom">
           <template #default="{ row }">
-            <span v-if="row.os" style="font-size: 13px; font-weight: 500; color: #334155;">{{ row.os }}</span>
+            <div class="cell-box">
+              <span v-if="row.os" style="font-size: 12.5px; color: #334155;">{{ row.os }}</span>
+            </div>
           </template>
         </el-table-column>
 
         <el-table-column prop="kernel_version" label="内核版本" width="115" align="center" sortable="custom">
           <template #default="{ row }">
-            <el-tooltip v-if="row.kernel_version" :content="row.kernel_version" placement="top" effect="dark">
-              <span class="kernel-badge">{{ getCleanKernel(row.kernel_version) }}</span>
-            </el-tooltip>
+            <div class="cell-box">
+              <el-tooltip v-if="row.kernel_version" :content="row.kernel_version" placement="top" effect="dark">
+                <span class="kernel-badge">{{ getCleanKernel(row.kernel_version) }}</span>
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="所属服务" min-width="260">
+        <el-table-column label="所属服务" width="220">
           <template #default="{ row }">
-            <div v-if="row.clusters && row.clusters.length > 0" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
-              <div
-                v-for="c in row.clusters"
-                :key="c.cluster_id"
-                class="badge-stack"
-                @mouseenter="(e) => handleServiceBadgeHover(e, c)"
-                @click="emit('filter-cluster', c.cluster_id)"
-              >
-                <span v-html="getMiddlewareLogo(c.cluster_type, 16)"></span>
-                <div class="badge-kv">
-                  <span class="badge-kv-key">{{ c.cluster_type || c.cluster_name }}</span>
-                  <span v-if="getServiceVersionLabel(c)" class="badge-kv-val badge-kv-version">{{ getServiceVersionLabel(c) }}</span>
-                </div>
+            <div class="cell-box">
+              <div v-if="row.clusters && row.clusters.length > 0" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                <el-popover
+                  v-for="c in row.clusters"
+                  :key="c.cluster_id"
+                  placement="top-start"
+                  :width="280"
+                  trigger="hover"
+                  :show-after="50"
+                  popper-class="service-card-popover"
+                >
+                  <template #reference>
+                    <div
+                      class="badge-stack"
+                      style="cursor: pointer;"
+                      @click.stop="emit('filter-cluster', c.cluster_id)"
+                    >
+                      <span v-html="getMiddlewareLogo(c.cluster_type, 16)"></span>
+                      <div class="badge-kv">
+                        <span class="badge-kv-key">{{ c.cluster_type || c.cluster_name }}</span>
+                        <span v-if="getServiceVersionLabel(c)" class="badge-kv-val badge-kv-version">{{ getServiceVersionLabel(c) }}</span>
+                      </div>
+                    </div>
+                  </template>
+
+                  <div class="service-popover-card">
+                    <div class="spc-header">
+                      <div class="spc-title-box">
+                        <span v-html="getMiddlewareLogo(c.cluster_type, 20)"></span>
+                        <span class="spc-name">{{ c.cluster_name || c.cluster_type }}</span>
+                      </div>
+                      <span v-if="c.env" class="env-tag" :class="c.env" style="font-size: 10px; padding: 1px 6px;">{{ getEnvLabel(c.env) }}</span>
+                    </div>
+
+                    <div class="spc-body">
+                      <div class="spc-row">
+                        <span class="spc-label">组件类型</span>
+                        <span class="spc-value">{{ c.cluster_type }}</span>
+                      </div>
+                      <div v-if="c.cluster_version || c.version" class="spc-row">
+                        <span class="spc-label">软件版本</span>
+                        <span class="spc-value spc-code">{{ c.cluster_version || c.version }}</span>
+                      </div>
+                      <div v-if="c.role && c.role !== '无'" class="spc-row">
+                        <span class="spc-label">节点角色</span>
+                        <span class="spc-role-tag">{{ c.role }}</span>
+                      </div>
+                      <div v-if="c.port" class="spc-row">
+                        <span class="spc-label">服务端口</span>
+                        <span class="spc-value spc-code">{{ c.port }}</span>
+                      </div>
+                      <div v-if="c.description" class="spc-row">
+                        <span class="spc-label">服务描述</span>
+                        <span class="spc-value" style="color: #64748b; font-size: 11.5px;">{{ c.description }}</span>
+                      </div>
+                    </div>
+
+                    <div class="spc-footer" style="cursor: pointer;" @click="emit('filter-cluster', c.cluster_id)">
+                      <span>点击跳转到该集群拓扑 ➔</span>
+                    </div>
+                  </div>
+                </el-popover>
               </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column prop="notes" label="备注" min-width="120" show-overflow-tooltip>
+
+        <el-table-column prop="notes" label="备注" width="130" show-overflow-tooltip>
           <template #default="{ row }">
-            <span v-if="row.notes" style="color: #64748b; font-size: 12px;">{{ row.notes }}</span>
+            <div class="cell-box">
+              <span v-if="row.notes" style="color: #64748b; font-size: 12px;">{{ row.notes }}</span>
+            </div>
           </template>
         </el-table-column>
 
@@ -187,11 +260,14 @@
         </el-table-column>
 
         <el-table-column label="操作" width="115" align="center" fixed="right">
+
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="openEditHostDialog(row)">编辑</el-button>
             <el-button link type="danger" size="small" @click="handleDeleteHost(row)">删除</el-button>
           </template>
         </el-table-column>
+
+
       </el-table>
 
       <!-- 分页栏 -->
@@ -272,6 +348,7 @@ import {
   formatDateTime,
   formatStorageValue,
   formatStorageUnit,
+  formatStorageFull,
   getShortKernel,
   getCleanKernel,
   parsePublicIps,
@@ -283,6 +360,7 @@ import {
   getStatusLabel as getStatusLabelUtil,
   getArchLabel as getArchLabelUtil
 } from '../utils'
+
 import HostFormDialog from '../components/HostFormDialog.vue'
 import HostExportDialog from '../components/HostExportDialog.vue'
 
@@ -334,6 +412,12 @@ const getEnvLabel = (key) => getEnvLabelUtil(key, props.metaConfig)
 const getArchLabel = (key) => getArchLabelUtil(key, props.metaConfig)
 const getStatusLabel = (key) => getStatusLabelUtil(key, props.metaConfig)
 
+const getServiceVersionLabel = (c) => {
+  const v = c?.cluster_version || c?.version
+  if (!v) return ''
+  return String(v).startsWith('v') || String(v).startsWith('V') ? String(v) : `v${v}`
+}
+
 const copyText = (txt) => {
   if (!txt) return
   navigator.clipboard.writeText(txt).then(() => {
@@ -341,11 +425,6 @@ const copyText = (txt) => {
   })
 }
 
-const getServiceVersionLabel = (c) => {
-  const v = c.cluster_version || c.version || ''
-  if (!v) return ''
-  return v.startsWith('v') || v.startsWith('V') ? v : `v${v}`
-}
 
 const getServiceDetailTitle = (c) => {
   const parts = []
@@ -385,34 +464,27 @@ const getHostDisplayPorts = (row) => {
   }
 }
 
-// 跨行智能合并公网 IP
-const hostSpanMethod = ({ row, column, rowIndex, columnIndex }) => {
-  if (column && column.property === 'public_ip') {
-    const pubIp = (row.public_ip || '').trim()
-    if (!pubIp) return { rowspan: 1, colspan: 1 }
+// 表格标准原生单元格格式化 (彻底保证 <td> 绝对不丢失、100% 对齐表头)
+const formatCpuCell = (row) => {
+  const v = Number(row.cpu_cores)
+  return v > 0 ? `${v} 核` : ''
+}
 
-    const items = hostsData.items
-    const prevRow = items[rowIndex - 1]
-    if (prevRow && (prevRow.public_ip || '').trim() === pubIp) {
-      return { rowspan: 0, colspan: 0 }
-    }
+const formatMemCell = (row) => {
+  const v = Number(row.memory_gb)
+  return v > 0 ? formatStorageFull(v) : ''
+}
 
-    let rowspan = 1
-    for (let i = rowIndex + 1; i < items.length; i++) {
-      if ((items[i].public_ip || '').trim() === pubIp) {
-        rowspan++
-      } else {
-        break
-      }
-    }
-    return { rowspan, colspan: 1 }
-  }
-  return { rowspan: 1, colspan: 1 }
+const formatDiskCell = (row) => {
+  const v = Number(row.disk_gb)
+  return v > 0 ? formatStorageFull(v) : ''
 }
 
 const handleSelectionChange = (selection) => {
   selectedHostIds.value = selection.map(item => item.id)
 }
+
+
 
 const handleSortChange = ({ prop, order }) => {
   if (!order) {
