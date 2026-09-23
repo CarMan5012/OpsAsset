@@ -137,6 +137,12 @@ def bind_hosts_to_cluster(cluster_id: int, req: ClusterBindRequest, db: Session 
 
     incoming_map = {item.host_id: (item.role.strip() if item.role else "") for item in req.nodes}
 
+    if incoming_map:
+        found_ids = {host_id for (host_id,) in db.query(Host.id).filter(Host.id.in_(incoming_map)).all()}
+        missing_ids = sorted(set(incoming_map) - found_ids)
+        if missing_ids:
+            raise HTTPException(status_code=400, detail=f"主机 ID {missing_ids} 不存在")
+
     # 1. 清除当前集群中不再保留的主机关联
     current_rels = db.query(HostClusterRelation).filter(HostClusterRelation.cluster_id == cluster_id).all()
     for rel in current_rels:
@@ -145,9 +151,6 @@ def bind_hosts_to_cluster(cluster_id: int, req: ClusterBindRequest, db: Session 
 
     # 2. 新增或更新关联及角色
     for host_id, role in incoming_map.items():
-        host = db.query(Host).filter(Host.id == host_id).first()
-        if not host:
-            continue
         rel = db.query(HostClusterRelation).filter(
             HostClusterRelation.host_id == host_id,
             HostClusterRelation.cluster_id == cluster_id

@@ -1,7 +1,7 @@
 <template>
   <section class="tab-pane">
     <!-- 1. 顶部 5 大全局核心资产 KPI 胶囊栏 (Full-Width 5-Column Grid) -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 20px;">
+    <div class="dashboard-section" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin-bottom: 28px;">
       <!-- KPI 1: 服务器总规模 -->
       <div class="ops-card kpi-card" style="padding: 16px 18px; display: flex; align-items: center; gap: 14px;">
         <div class="kpi-icon-box" style="background: #eff6ff; color: #2563eb; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
@@ -10,7 +10,7 @@
         <div style="flex: 1; overflow: hidden;">
           <div style="font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 2px;">全网服务器总量</div>
           <div style="display: flex; align-items: baseline; gap: 6px;">
-            <span style="font-size: 24px; font-weight: 700; color: #0f172a; font-family: 'JetBrains Mono', monospace;">
+            <span style="font-size: 24px; font-weight: 700; color: #0f172a; font-family: var(--font-data);">
               {{ overview.total_hosts || 0 }}
             </span>
             <span style="font-size: 12px; color: #64748b;">台</span>
@@ -38,12 +38,12 @@
             <span style="font-size: 11px; color: #0284c7; font-weight: 600;">详情 →</span>
           </div>
           <div style="display: flex; align-items: baseline; gap: 8px;">
-            <span style="font-size: 24px; font-weight: 700; color: #0284c7; font-family: 'JetBrains Mono', monospace;">
+            <span style="font-size: 24px; font-weight: 700; color: #0284c7; font-family: var(--font-data);">
               {{ overview.total_domains || 0 }}
             </span>
             <span style="font-size: 12px; color: #64748b;">域名</span>
             <span style="color: #cbd5e1;">|</span>
-            <span style="font-size: 18px; font-weight: 700; color: #2563eb; font-family: 'JetBrains Mono', monospace;">
+            <span style="font-size: 18px; font-weight: 700; color: #2563eb; font-family: var(--font-data);">
               {{ overview.total_public_ips || 0 }}
             </span>
             <span style="font-size: 12px; color: #64748b;">公网IP</span>
@@ -64,7 +64,7 @@
         <div style="flex: 1; overflow: hidden;">
           <div style="font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 2px;">服务与集群总数</div>
           <div style="display: flex; align-items: baseline; gap: 6px;">
-            <span style="font-size: 24px; font-weight: 700; color: #7c3aed; font-family: 'JetBrains Mono', monospace;">
+            <span style="font-size: 24px; font-weight: 700; color: #7c3aed; font-family: var(--font-data);">
               {{ overview.total_clusters || 0 }}
             </span>
             <span style="font-size: 12px; color: #64748b;">个</span>
@@ -83,7 +83,7 @@
         <div style="flex: 1; overflow: hidden;">
           <div style="font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 2px;">CPU 算力总量</div>
           <div style="display: flex; align-items: baseline; gap: 6px;">
-            <span style="font-size: 24px; font-weight: 700; color: #10b981; font-family: 'JetBrains Mono', monospace;">
+            <span style="font-size: 24px; font-weight: 700; color: #10b981; font-family: var(--font-data);">
               {{ overview.total_cpu_cores || 0 }}
             </span>
             <span style="font-size: 12px; color: #64748b;">核</span>
@@ -102,7 +102,7 @@
         <div style="flex: 1; overflow: hidden;">
           <div style="font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 2px;">总内存与存储池</div>
           <div style="display: flex; align-items: baseline; gap: 6px;">
-            <span style="font-size: 22px; font-weight: 700; color: #d97706; font-family: 'JetBrains Mono', monospace;">
+            <span style="font-size: 22px; font-weight: 700; color: #d97706; font-family: var(--font-data);">
               {{ formatStorageValue(overview.total_memory_gb) }}
             </span>
             <span style="font-size: 12px; color: #64748b; font-weight: 600;">{{ formatStorageUnit(overview.total_memory_gb) }} (RAM)</span>
@@ -114,67 +114,51 @@
       </div>
     </div>
 
-    <!-- 2. 环境资源对比卡片 (自适应全部动态环境，展示公网IP分布) -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 20px;">
+    <div class="dashboard-attention" :class="{ 'is-clear': attentionCount === 0 }">
+      <div class="dashboard-attention-title">
+        <span class="attention-dot"></span>
+        <strong>{{ attentionCount > 0 ? '需要关注' : '运行正常' }}</strong>
+        <span>{{ attentionCount > 0 ? `共 ${attentionCount} 项` : '当前没有离线主机、维护中主机或域名解析异常' }}</span>
+      </div>
+      <div v-if="attentionCount > 0" class="dashboard-attention-items">
+        <span v-if="totalOfflineHosts > 0">离线主机 <b>{{ totalOfflineHosts }}</b></span>
+        <span v-if="totalMaintenanceHosts > 0">维护中 <b>{{ totalMaintenanceHosts }}</b></span>
+        <button v-if="dnsIssueCount > 0" type="button" @click="$emit('select-domains')">域名解析异常 <b>{{ dnsIssueCount }}</b> →</button>
+      </div>
+    </div>
+
+    <!-- 2. 环境资源对比 -->
+    <div class="dashboard-section" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 18px; margin-bottom: 28px;">
       <div v-for="env in availableEnvs" :key="env.key"
-        class="ops-card env-card" :class="env.key" style="padding: 18px 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 15px; font-weight: 700; color: #0f172a;">{{ env.label }}</span>
-            <span class="env-tag" :class="env.key">{{ env.label.replace('环境', '') }}</span>
-          </div>
-          <div style="font-size: 12.5px; color: #64748b; display: flex; align-items: center; gap: 6px;">
-            <span>在线 <b style="color: #0f172a;">{{ getEnvStats(env.key).online_count || 0 }}</b> / <b style="color: #0f172a;">{{ getEnvStats(env.key).host_count || 0 }}</b> 台</span>
-            <span v-if="getEnvStats(env.key).public_ip_count > 0" style="color: #2563eb; font-weight: 600; font-size: 11.5px;">(🌐 {{ getEnvStats(env.key).public_ip_count }} 公网)</span>
-          </div>
+        class="ops-card env-card env-summary" :class="env.key">
+        <div class="env-summary-head">
+          <strong>{{ env.label }}</strong>
+          <span>在线 <b>{{ getEnvStats(env.key).online_count || 0 }}</b> / {{ getEnvStats(env.key).host_count || 0 }} 台</span>
         </div>
-
-        <!-- 在线率健康度指示条 -->
-        <div style="background: #f1f5f9; height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 16px;">
-          <div :style="{ width: getEnvOnlineRate(env.key) + '%' }"
-            :class="env.key === 'prod' ? 'bg-prod-bar' : 'bg-test-bar'"
-            style="height: 100%; border-radius: 3px; transition: width 0.4s ease;"></div>
-        </div>
-
-        <!-- 3 列指标 -->
-        <div class="metric-row" style="margin-top: 0;">
-          <div class="metric-box">
-            <div class="metric-val" :style="{ color: env.key === 'prod' ? '#dc2626' : '#059669' }" style="font-family: 'JetBrains Mono', monospace;">
-              {{ getEnvStats(env.key).total_cpu_cores || 0 }} <span style="font-size: 11px; font-weight: normal; color: #64748b;">核</span>
-            </div>
-            <div class="metric-lbl">{{ env.label }} CPU</div>
-          </div>
-          <div class="metric-box">
-            <div class="metric-val" style="font-family: 'JetBrains Mono', monospace;">
-              {{ formatStorageValue(getEnvStats(env.key).total_memory_gb) }} <span style="font-size: 11px; font-weight: normal; color: #64748b;">{{ formatStorageUnit(getEnvStats(env.key).total_memory_gb) }}</span>
-            </div>
-            <div class="metric-lbl">{{ env.label }} 内存</div>
-          </div>
-          <div class="metric-box">
-            <div class="metric-val" style="font-family: 'JetBrains Mono', monospace;">
-              {{ formatStorageValue(getEnvStats(env.key).total_disk_gb) }} <span style="font-size: 11px; font-weight: normal; color: #64748b;">{{ formatStorageUnit(getEnvStats(env.key).total_disk_gb) }}</span>
-            </div>
-            <div class="metric-lbl">{{ env.label }} 存储</div>
-          </div>
+        <div class="env-summary-track"><span :style="{ width: getEnvOnlineRate(env.key) + '%' }"></span></div>
+        <div class="env-summary-metrics">
+          <div><span>CPU</span><strong>{{ getEnvStats(env.key).total_cpu_cores || 0 }} 核</strong></div>
+          <div><span>内存</span><strong>{{ formatStorageFull(getEnvStats(env.key).total_memory_gb) || '0 GB' }}</strong></div>
+          <div><span>存储</span><strong>{{ formatStorageFull(getEnvStats(env.key).total_disk_gb) || '0 GB' }}</strong></div>
         </div>
       </div>
     </div>
 
     <!-- 3. 公网资产全景看板 (公网 IP 资产池 + 核心公网域名资产) -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; margin-bottom: 20px;">
+    <div class="dashboard-section" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 18px; margin-bottom: 28px;">
       <!-- 面板 1: 公网 IP 资产池 -->
       <div class="ops-card" style="padding: 18px 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <Network :size="16" style="color: #2563eb;" />
-            <span style="font-size: 14.5px; font-weight: 700; color: #0f172a;">全网公网 IP 资产池</span>
+            <span style="font-size: 14.5px; font-weight: 700; color: #0f172a;">公网 IP</span>
             <span style="font-size: 12px; color: #64748b;">(共 {{ (overview.public_ip_details || []).length }} 个)</span>
           </div>
         </div>
 
-        <div v-if="(overview.public_ip_details || []).length > 0" style="display: flex; flex-wrap: wrap; gap: 8px; max-height: 210px; overflow-y: auto; padding: 2px;">
+        <div v-if="(overview.public_ip_details || []).length > 0" style="display: flex; flex-wrap: wrap; gap: 8px; padding: 2px;">
           <div
-            v-for="item in overview.public_ip_details"
+            v-for="item in (overview.public_ip_details || []).slice(0, 5)"
             :key="item.ip"
             class="pub-ip-chip"
             @click="copyText(item.ip)"
@@ -183,7 +167,7 @@
             <span :class="item.is_ipv6 ? 'badge-ip-v6' : 'badge-ip-v4'" style="font-size: 9.5px; font-weight: 700; padding: 0 4px; border-radius: 2px; line-height: 14px;">
               {{ item.is_ipv6 ? 'v6' : 'v4' }}
             </span>
-            <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: #0f172a;">
+            <span style="font-family: var(--font-data); font-size: 12px; font-weight: 600; color: #0f172a;">
               {{ item.ip }}
             </span>
             <span style="font-size: 11px; color: #64748b; border-left: 1px solid #cbd5e1; padding-left: 5px;">
@@ -194,7 +178,8 @@
             </span>
           </div>
         </div>
-        <div v-else style="text-align: center; padding: 24px 0; color: #94a3b8; font-size: 12.5px;">
+        <button v-if="(overview.public_ip_details || []).length > 5" class="dashboard-more" type="button" @click="$emit('select-hosts')">查看全部 {{ overview.public_ip_details.length }} 个 →</button>
+        <div v-if="!(overview.public_ip_details || []).length" style="text-align: center; padding: 24px 0; color: #94a3b8; font-size: 12.5px;">
           暂未发现配置公网 IP 的服务器
         </div>
       </div>
@@ -204,17 +189,17 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <Globe :size="16" style="color: #0284c7;" />
-            <span style="font-size: 14.5px; font-weight: 700; color: #0f172a;">公网域名解析台账概览</span>
+            <span style="font-size: 14.5px; font-weight: 700; color: #0f172a;">域名解析</span>
             <span style="font-size: 12px; color: #64748b;">(共 {{ (overview.domains_summary || []).length }} 个)</span>
           </div>
           <el-button size="small" type="primary" link @click="$emit('select-domains')">
-            管理域名资产 →
+            查看全部 →
           </el-button>
         </div>
 
-        <div v-if="(overview.domains_summary || []).length > 0" style="display: flex; flex-direction: column; gap: 8px; max-height: 210px; overflow-y: auto; padding-right: 4px;">
+        <div v-if="(overview.domains_summary || []).length > 0" style="display: flex; flex-direction: column; gap: 8px;">
           <div
-            v-for="d in overview.domains_summary"
+            v-for="d in prioritizedDomains"
             :key="d.id"
             class="domain-summary-item"
             @click="$emit('select-domains')"
@@ -230,7 +215,7 @@
             </div>
 
             <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-              <span v-if="d.public_ip" style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #475569;" :title="'绑定IP: ' + d.public_ip">
+              <span v-if="d.public_ip" style="font-family: var(--font-data); font-size: 11px; color: #475569;" :title="'绑定IP: ' + d.public_ip">
                 {{ d.public_ip.split(/[,，;\s]+/)[0] }}{{ d.public_ip.includes(',') ? ' 等' : '' }}
               </span>
               <el-tag v-if="d.resolve_status === 'matched'" type="success" size="small" effect="light" style="font-weight: 600;">
@@ -254,90 +239,38 @@
       </div>
     </div>
 
-    <!-- 4. 服务与集群拓扑全景矩阵 (全宽展示，支持环境与组件双重过滤) -->
-    <div class="ops-card" style="margin-bottom: 24px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-        <!-- 左侧: 标题 + 环境选择胶囊组 -->
-        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-          <h3 style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px;">
-            <Layers :size="16" style="color: #7c3aed;" /> 各服务与集群节点分布
-          </h3>
-          <span style="font-size: 12px; color: #64748b;">
-            ({{ filteredClusters.length }} / {{ (overview.cluster_distribution || []).length }})
-          </span>
-
-          <!-- 环境单选胶囊 -->
-          <div style="display: flex; gap: 4px; align-items: center; background: #f1f5f9; padding: 3px; border-radius: 6px; margin-left: 4px;">
-            <div class="env-filter-chip" :class="{ active: selectedEnvFilter === '' }" @click="selectedEnvFilter = ''">
-              全部环境
-            </div>
-            <div v-for="env in availableEnvs" :key="env.key"
-              class="env-filter-chip" :class="{ active: selectedEnvFilter === env.key }"
-              @click="selectedEnvFilter = (selectedEnvFilter === env.key ? '' : env.key)">
-              {{ env.label }}
-            </div>
-          </div>
-        </div>
-
-        <!-- 右侧: 中间件类型选择胶囊组 -->
-        <div style="display: flex; gap: 5px; flex-wrap: wrap; align-items: center;">
-          <div class="cluster-chip" :class="{ active: selectedTypeFilter === '' }" @click="selectedTypeFilter = ''">
-            <span>全部组件</span>
-            <span class="chip-count">{{ currentEnvTotalClusters }}</span>
-          </div>
-          <div v-for="t in dynamicClusterTypes" :key="t.type"
-            class="cluster-chip" :class="{ active: selectedTypeFilter === t.type }"
-            @click="selectedTypeFilter = (selectedTypeFilter === t.type ? '' : t.type)">
-            <span v-html="getMiddlewareLogo(t.type, 14)" style="display: flex; align-items: center;"></span>
-            <span>{{ t.type }}</span>
-            <span class="chip-count">{{ t.count }}</span>
-          </div>
+    <div class="ops-card dashboard-clusters">
+      <div class="dashboard-clusters-header">
+        <div class="dashboard-clusters-title"><Layers :size="17" /> 服务与集群 <span>{{ filteredClusters.length }} 个</span></div>
+        <div class="dashboard-clusters-actions">
+          <el-select v-model="selectedEnvFilter" aria-label="筛选环境" size="small" style="width: 118px">
+            <el-option label="全部环境" value="" />
+            <el-option v-for="env in availableEnvs" :key="env.key" :label="env.label" :value="env.key" />
+          </el-select>
+          <el-select v-model="selectedTypeFilter" aria-label="筛选组件" size="small" style="width: 130px">
+            <el-option label="全部组件" value="" />
+            <el-option v-for="t in dynamicClusterTypes" :key="t.type" :label="`${t.type} (${t.count})`" :value="t.type" />
+          </el-select>
+          <el-button size="small" type="primary" link @click="$emit('select-cluster')">管理集群 →</el-button>
         </div>
       </div>
-
-      <!-- 自适应集群网格卡片 -->
-      <div v-if="filteredClusters.length > 0"
-        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; max-height: 480px; overflow-y: auto; padding-right: 4px;">
-        <div v-for="c in filteredClusters" :key="c.name"
-          class="dashboard-cluster-item"
-          @click="handleClusterClick(c)">
-          <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1; min-width: 0;">
-            <span v-html="getMiddlewareLogo(c.cluster_type, 20)" style="display: flex; align-items: center; flex-shrink: 0;"></span>
-            <div style="overflow: hidden; display: flex; flex-direction: column; min-width: 0; flex: 1;">
-              <span style="font-size: 13.5px; font-weight: 600; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="c.name">
-                {{ c.name }}
-              </span>
-              <div style="display: flex; gap: 5px; align-items: center; margin-top: 3px; white-space: nowrap; overflow: hidden;">
-                <span v-if="c.env" class="env-tag" :class="c.env" style="font-size: 10.5px; padding: 0 5px; line-height: 16px; flex-shrink: 0;">
-                  {{ getEnvLabel(c.env) }}
-                </span>
-                <span style="font-size: 11px; color: #64748b; font-weight: 500; flex-shrink: 0;">{{ c.cluster_type }}</span>
-                <span v-if="c.version"
-                  style="font-size: 10.5px; font-family: 'JetBrains Mono', monospace; color: #2563eb; background: #eff6ff; border: 1px solid #dbeafe; padding: 0.5px 5px; border-radius: 3px; font-weight: 600; line-height: 15px; max-width: 110px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"
-                  :title="'版本: ' + c.version">
-                  {{ c.version }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: 8px;">
-            <span style="font-size: 12.5px; font-weight: 700; color: #2563eb; background: #eff6ff; padding: 3px 9px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;">
-              {{ c.node_count }} 节点
-            </span>
-          </div>
-        </div>
+      <div v-if="filteredClusters.length" class="dashboard-cluster-grid">
+        <button v-for="c in visibleClusters" :key="`${c.name}-${c.env}`" type="button" class="dashboard-cluster-item" @click="handleClusterClick(c)">
+          <span v-html="getMiddlewareLogo(c.cluster_type, 20)" class="dashboard-cluster-logo"></span>
+          <span class="dashboard-cluster-details"><strong :title="c.name">{{ c.name }}</strong><small>{{ getEnvLabel(c.env) }} · {{ c.cluster_type }}</small></span>
+          <span class="dashboard-cluster-nodes">{{ c.node_count }} 节点</span>
+        </button>
       </div>
-
-      <div v-else style="text-align: center; padding: 36px 0; color: #94a3b8; font-size: 13px;">
-        暂无符合筛选条件的服务与集群
-      </div>
+      <div v-else class="dashboard-empty">暂无符合条件的集群</div>
+      <button v-if="filteredClusters.length > 6" class="dashboard-more" type="button" @click="showAllClusters = !showAllClusters">
+        {{ showAllClusters ? '收起' : `展开其余 ${filteredClusters.length - 6} 个` }} {{ showAllClusters ? '↑' : '↓' }}
+      </button>
     </div>
   </section>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Server, Layers, Cpu, HardDrive, Network, Globe } from 'lucide-vue-next'
 import { getMiddlewareLogo, formatStorageValue, formatStorageUnit, formatStorageFull, getEnvLabel as getEnvLabelUtil } from '../utils'
@@ -346,10 +279,13 @@ const props = defineProps({
   overview: { type: Object, required: true },
   metaConfig: { type: Object, required: true }
 })
-const emit = defineEmits(['select-cluster', 'select-domains'])
+const emit = defineEmits(['select-cluster', 'select-domains', 'select-hosts'])
 
 const selectedEnvFilter = ref('')
 const selectedTypeFilter = ref('')
+const showAllClusters = ref(false)
+watch(selectedEnvFilter, () => { selectedTypeFilter.value = ''; showAllClusters.value = false })
+watch(selectedTypeFilter, () => { showAllClusters.value = false })
 
 const availableEnvs = computed(() => {
   return props.metaConfig?.environments || []
@@ -390,9 +326,15 @@ const totalOnlineHosts = computed(() => {
 })
 
 const totalOfflineHosts = computed(() => {
-  const total = Number(props.overview?.total_hosts || 0)
-  return Math.max(0, total - totalOnlineHosts.value)
+  return Object.values(props.overview?.envs || {}).reduce((sum, s) => sum + Number(s.offline_count || 0), 0)
 })
+
+const totalMaintenanceHosts = computed(() => Object.values(props.overview?.envs || {}).reduce((sum, s) => sum + Number(s.maintenance_count || 0), 0))
+const dnsIssueCount = computed(() => (props.overview?.domains_summary || []).filter(d => ['mismatched', 'failed'].includes(d.resolve_status)).length)
+const attentionCount = computed(() => totalOfflineHosts.value + totalMaintenanceHosts.value + dnsIssueCount.value)
+const prioritizedDomains = computed(() => [...(props.overview?.domains_summary || [])]
+  .sort((a, b) => Number(['mismatched', 'failed'].includes(b.resolve_status)) - Number(['mismatched', 'failed'].includes(a.resolve_status)))
+  .slice(0, 4))
 
 const totalDiskCapacity = computed(() => {
   if (props.overview?.envs) {
@@ -405,14 +347,6 @@ const uniqueClusterTypesCount = computed(() => {
   const list = props.overview?.cluster_distribution || []
   const types = new Set(list.map(c => c.cluster_type).filter(Boolean))
   return types.size || (props.metaConfig?.cluster_types?.length || 0)
-})
-
-const currentEnvTotalClusters = computed(() => {
-  let list = props.overview?.cluster_distribution || []
-  if (selectedEnvFilter.value) {
-    list = list.filter(c => c.env === selectedEnvFilter.value)
-  }
-  return list.length
 })
 
 const dynamicClusterTypes = computed(() => {
@@ -439,6 +373,8 @@ const filteredClusters = computed(() => {
   return list
 })
 
+const visibleClusters = computed(() => showAllClusters.value ? filteredClusters.value : filteredClusters.value.slice(0, 6))
+
 const getEnvLabel = (key) => {
   return getEnvLabelUtil(key, props.metaConfig)
 }
@@ -458,6 +394,44 @@ const handleClusterClick = (c) => {
 </script>
 
 <style scoped>
+.dashboard-attention{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px;padding:13px 18px;border:1px solid #fed7aa;border-radius:10px;background:#fffaf3;color:#9a3412}
+.dashboard-attention.is-clear{border-color:#bbf7d0;background:#f7fef9;color:#166534}
+.dashboard-attention-title,.dashboard-attention-items{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dashboard-attention-title strong{font-size:14px}
+.dashboard-attention-title span:last-child{font-size:12px;color:#64748b}
+.attention-dot{width:8px;height:8px;border-radius:50%;background:#f97316}
+.is-clear .attention-dot{background:#22c55e}
+.dashboard-attention-items{font-size:12px}
+.dashboard-attention-items button,.dashboard-more{border:0;background:none;color:#2563eb;font:inherit;font-weight:600;cursor:pointer;padding:0}
+.dashboard-attention-items button:hover,.dashboard-more:hover{text-decoration:underline}
+.env-summary{padding:18px 20px}
+.env-summary-head{display:flex;justify-content:space-between;align-items:center;gap:12px;color:#0f172a}
+.env-summary-head strong{font-size:15px}
+.env-summary-head span{color:#64748b;font-size:12px}
+.env-summary-head b{color:#0f172a;font-size:17px}
+.env-summary-track{height:5px;background:#e2e8f0;border-radius:10px;margin:15px 0 16px;overflow:hidden}
+.env-summary-track span{display:block;height:100%;background:#2563eb;border-radius:10px}
+.env-summary.test .env-summary-track span{background:#10b981}
+.env-summary-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.env-summary-metrics div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.env-summary-metrics span{color:#64748b;font-size:11px}
+.env-summary-metrics strong{color:#334155;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dashboard-more{display:block;margin:16px auto 0;font-size:12px}
+.dashboard-clusters{padding:20px;margin-bottom:24px}
+.dashboard-clusters-header,.dashboard-clusters-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dashboard-clusters-header{justify-content:space-between;margin-bottom:16px}
+.dashboard-clusters-title{display:flex;align-items:center;gap:7px;color:#0f172a;font-size:15px;font-weight:700}
+.dashboard-clusters-title svg{color:#7c3aed}
+.dashboard-clusters-title span{color:#64748b;font-size:12px;font-weight:400}
+.dashboard-cluster-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.dashboard-cluster-logo{display:flex;align-items:center;flex-shrink:0}
+.dashboard-cluster-details{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px;text-align:left}
+.dashboard-cluster-details strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:#0f172a}
+.dashboard-cluster-details small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#64748b}
+.dashboard-cluster-nodes{font-size:12px;color:#2563eb;white-space:nowrap}
+.dashboard-empty{padding:30px;text-align:center;color:#94a3b8;font-size:13px}
+@media(max-width:1100px){.dashboard-cluster-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.dashboard-cluster-grid{grid-template-columns:1fr}.dashboard-clusters-actions{width:100%}.dashboard-attention{align-items:flex-start}.env-summary-metrics{gap:6px}}
 .bg-prod-bar {
   background: #2563eb;
 }

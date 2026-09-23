@@ -8,7 +8,7 @@
           </div>
           <div>
             <div style="font-size: 16px; font-weight: 700; color: #0f172a;">
-              {{ isEdit ? '编辑主机资产' : '录入新主机资产' }}
+              {{ isEdit ? '编辑主机' : '新增主机' }}
             </div>
           </div>
         </div>
@@ -20,80 +20,79 @@
 
     <el-form :model="form" label-position="top" class="pro-modal-form">
       <div class="form-section-title" style="display: flex; align-items: center; gap: 6px; font-weight: 700; color: #0f172a; margin-bottom: 12px;">
-        <ShieldCheck :size="16" style="color: #2563eb;" /> 基础与网络标识
+        <ShieldCheck :size="16" style="color: #2563eb;" /> 基本信息
       </div>
       <div class="form-row-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 0;">
-        <el-form-item label="主机名称 (Hostname)*" required>
-          <el-input v-model="form.hostname" placeholder="如: k8s-master-01"></el-input>
+        <el-form-item label="主机名" required>
+          <el-input v-model="form.hostname" placeholder="如 k8s-master-01"></el-input>
         </el-form-item>
-        <el-form-item label="所属运行环境*" required>
-          <el-select v-model="form.env" style="width: 100%;">
+        <el-form-item label="环境" required>
+          <el-select v-model="form.env" placeholder="选择环境" style="width: 100%;">
             <el-option v-for="env in metaConfig.environments" :key="env.key" :label="env.label" :value="env.key" />
           </el-select>
         </el-form-item>
       </div>
 
       <div class="form-row-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 0;">
-        <el-form-item label="内网 IP (自然唯一主键)*" required>
-          <el-input v-model="form.private_ip" placeholder="如: 192.168.1.10" :disabled="isEdit"></el-input>
+        <el-form-item label="内网 IP" required>
+          <el-input v-model="form.private_ip" placeholder="如 192.168.1.10" :disabled="isEdit"></el-input>
         </el-form-item>
-        <el-form-item label="外网/公网 IP (支持填多个)">
-          <el-input v-model="form.public_ip" placeholder="如: 120.55.1.1, 120.55.1.2"></el-input>
+        <el-form-item label="公网 IP">
+          <el-input v-model="form.public_ip" placeholder="多个 IP 用逗号分隔"></el-input>
         </el-form-item>
       </div>
 
       <div class="form-row-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 0;">
-        <el-form-item label="当前主机运行状态*" required>
-          <el-select v-model="form.status" style="width: 100%;">
+        <el-form-item label="运行状态" required>
+          <el-select v-model="form.status" placeholder="选择状态" style="width: 100%;">
             <el-option v-for="st in metaConfig.host_statuses" :key="st.key" :label="st.label" :value="st.key">
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span :style="{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: st.color || '#94a3b8' }"></span>
                 <span>{{ st.label }}</span>
-                <span style="color: #94a3b8; font-size: 11px; margin-left: auto;">{{ st.key }}</span>
               </div>
             </el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="常用开放端口清单">
-          <el-input v-model="form.open_ports" placeholder="如: 22, 80, 443, 6443, 30000-32767"></el-input>
+        <el-form-item label="开放端口">
+          <el-input v-model="form.open_ports" placeholder="如 22, 80, 443"></el-input>
         </el-form-item>
       </div>
 
       <div class="form-section-title" style="margin-top: 16px; display: flex; align-items: center; gap: 6px; font-weight: 700; color: #0f172a; margin-bottom: 12px;">
-        <Cpu :size="16" style="color: #2563eb;" /> 硬件与操作系统规格
+        <Cpu :size="16" style="color: #2563eb;" /> 硬件与系统
       </div>
       <!-- 硬件规格三列一行 -->
       <div class="form-row-3col" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 0;">
-        <el-form-item label="CPU 核心数 (核)*" required>
-          <el-input-number v-model="form.cpu_cores" :min="1" :max="1024" style="width: 100%;"></el-input-number>
+        <el-form-item label="CPU（核）" required>
+          <el-input-number v-model="form.cpu_cores" :min="1" :max="1024" placeholder="核数" style="width: 100%;"></el-input-number>
         </el-form-item>
-        <el-form-item label="物理内存 (GB)*" required>
-          <el-input-number v-model="form.memory_gb" :min="1" :max="4096" style="width: 100%;"></el-input-number>
+        <el-form-item label="内存（GB）" required>
+          <el-input-number v-model="form.memory_gb" :min="1" :max="4096" placeholder="容量" style="width: 100%;"></el-input-number>
         </el-form-item>
-        <el-form-item label="数据盘容量 (GB)*" required>
-          <el-input-number v-model="form.disk_gb" :min="0" :max="100000" style="width: 100%;"></el-input-number>
+        <el-form-item label="数据盘（GB）" required>
+          <el-input-number v-model="form.disk_gb" :min="0" :max="100000" placeholder="容量" style="width: 100%;"></el-input-number>
         </el-form-item>
       </div>
 
       <!-- 架构与系统三列一行 -->
       <div class="form-row-3col" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 0;">
-        <el-form-item label="CPU 架构*" required>
-          <el-select v-model="form.arch" style="width: 100%;">
+        <el-form-item label="CPU 架构" required>
+          <el-select v-model="form.arch" placeholder="选择架构" style="width: 100%;">
             <el-option v-for="a in metaConfig.cpu_architectures" :key="a.key" :label="a.label" :value="a.key" />
           </el-select>
         </el-form-item>
-        <el-form-item label="操作系统发行版">
-          <el-select v-model="form.os" filterable allow-create default-first-option placeholder="选择或输入OS" style="width: 100%;">
+        <el-form-item label="操作系统">
+          <el-select v-model="form.os" filterable allow-create default-first-option placeholder="选择或输入系统" style="width: 100%;">
             <el-option v-for="os in metaConfig.common_os_list" :key="os" :label="os" :value="os" />
           </el-select>
         </el-form-item>
-        <el-form-item label="Linux 内核版本">
-          <el-input v-model="form.kernel_version" placeholder="如: 5.15.0-89-generic" style="width: 100%;"></el-input>
+        <el-form-item label="内核版本">
+          <el-input v-model="form.kernel_version" placeholder="如 5.15.0-89-generic" style="width: 100%;"></el-input>
         </el-form-item>
       </div>
 
-      <el-form-item label="备注说明" style="margin-top: 4px;">
-        <el-input type="textarea" v-model="form.notes" rows="2" placeholder="机房机架位、特殊用途说明等"></el-input>
+      <el-form-item label="备注" style="margin-top: 4px;">
+        <el-input type="textarea" v-model="form.notes" rows="2" placeholder="选填"></el-input>
       </el-form-item>
     </el-form>
 
@@ -101,7 +100,7 @@
       <div style="display: flex; justify-content: flex-end; gap: 8px;">
         <el-button @click="visible = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="handleSave">
-          {{ isEdit ? '保存更新' : '立即创建' }}
+          {{ isEdit ? '保存' : '创建' }}
         </el-button>
       </div>
     </template>
@@ -127,15 +126,15 @@ const form = ref({
   hostname: '',
   private_ip: '',
   public_ip: '',
-  env: 'prod',
-  status: 'online',
-  cpu_cores: 4,
-  memory_gb: 8,
-  disk_gb: 100,
-  os: 'CentOS 7.9',
-  arch: 'amd64',
+  env: '',
+  status: '',
+  cpu_cores: null,
+  memory_gb: null,
+  disk_gb: null,
+  os: '',
+  arch: '',
   kernel_version: '',
-  open_ports: '22, 80, 443',
+  open_ports: '',
   notes: ''
 })
 
@@ -166,24 +165,20 @@ const open = (row = null) => {
     }
   } else {
     isEdit.value = false
-    const defaultEnv = props.metaConfig.environments?.[0]?.key || 'prod'
-    const defaultStatus = props.metaConfig.host_statuses?.[0]?.key || 'online'
-    const defaultArch = props.metaConfig.cpu_architectures?.[0]?.key || 'amd64'
-    const defaultOs = props.metaConfig.common_os_list?.[0] || 'CentOS 7.9'
     form.value = {
       id: null,
       hostname: '',
       private_ip: '',
       public_ip: '',
-      env: defaultEnv,
-      status: defaultStatus,
-      cpu_cores: 4,
-      memory_gb: 8,
-      disk_gb: 100,
-      os: defaultOs,
-      arch: defaultArch,
+      env: '',
+      status: '',
+      cpu_cores: null,
+      memory_gb: null,
+      disk_gb: null,
+      os: '',
+      arch: '',
       kernel_version: '',
-      open_ports: '22, 80, 443',
+      open_ports: '',
       notes: ''
     }
   }
@@ -193,6 +188,11 @@ const open = (row = null) => {
 const handleSave = async () => {
   if (!form.value.hostname || !form.value.private_ip) {
     ElMessage.warning('主机名与内网IP为必填项')
+    return
+  }
+  if (!form.value.env || !form.value.status || !form.value.arch ||
+      form.value.cpu_cores == null || form.value.memory_gb == null || form.value.disk_gb == null) {
+    ElMessage.warning('请填写环境、状态、架构和硬件规格')
     return
   }
   saving.value = true

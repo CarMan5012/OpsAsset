@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional, Any
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 
 # ----------------- 集群与关联 Schemas -----------------
 
@@ -41,12 +41,21 @@ class ClusterCreate(ClusterBase):
     pass
 
 class ClusterUpdate(BaseModel):
-    name: Optional[str] = None
-    cluster_type: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    cluster_type: Optional[str] = Field(None, min_length=1, max_length=50)
     port: Optional[str] = None
     version: Optional[str] = None
     env: Optional[str] = None
     description: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_required_fields(self):
+        for field in ("name", "cluster_type", "env"):
+            if field in self.model_fields_set:
+                value = getattr(self, field)
+                if value is None or not value.strip():
+                    raise ValueError(f"{field} 不能为空")
+        return self
 
 class HostSimpleForCluster(BaseModel):
     host_id: int
@@ -178,12 +187,12 @@ class HostCreate(HostBase):
 class HostUpdate(BaseModel):
     model_config = ConfigDict(extra="ignore", from_attributes=True)
 
-    hostname: Optional[str] = None
-    private_ip: Optional[str] = None
+    hostname: Optional[str] = Field(None, min_length=1, max_length=100)
+    private_ip: Optional[str] = Field(None, min_length=1)
     public_ip: Optional[str] = None
-    cpu_cores: Optional[int] = None
-    memory_gb: Optional[float] = None
-    disk_gb: Optional[float] = None
+    cpu_cores: Optional[int] = Field(None, ge=0)
+    memory_gb: Optional[float] = Field(None, ge=0)
+    disk_gb: Optional[float] = Field(None, ge=0)
     os: Optional[str] = None
     arch: Optional[str] = None
     kernel_version: Optional[str] = None
@@ -192,6 +201,15 @@ class HostUpdate(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
     cluster_ids_with_roles: Optional[List[dict]] = None
+
+    @model_validator(mode="after")
+    def validate_required_fields(self):
+        for field in ("hostname", "private_ip", "cpu_cores", "memory_gb", "disk_gb", "arch", "env", "status"):
+            if field in self.model_fields_set:
+                value = getattr(self, field)
+                if value is None or (isinstance(value, str) and not value.strip()):
+                    raise ValueError(f"{field} 不能为空")
+        return self
 
 class HostResponse(HostBase):
     model_config = ConfigDict(from_attributes=True)
@@ -265,6 +283,15 @@ class ClusterDistributionItem(BaseModel):
 
 # ----------------- 域名 Schemas -----------------
 
+def normalize_domain_name(value: str) -> str:
+    if not value:
+        raise ValueError("域名不能为空")
+    name = value.strip().lower()
+    name = name.removeprefix("http://").removeprefix("https://").split("/")[0].split(":")[0]
+    if not name:
+        raise ValueError("域名不能为空")
+    return name
+
 class DomainHostSimple(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
@@ -288,12 +315,7 @@ class DomainBase(BaseModel):
     @field_validator("domain_name")
     @classmethod
     def clean_domain_name(cls, v: str) -> str:
-        if not v:
-            raise ValueError("域名不能为空")
-        s = v.strip().lower()
-        # 去除协议头与路径
-        s = s.replace("http://", "").replace("https://", "").split("/")[0].split(":")[0]
-        return s
+        return normalize_domain_name(v)
 
 class DomainCreate(DomainBase):
     pass
@@ -308,6 +330,18 @@ class DomainUpdate(BaseModel):
     bound_host_id: Optional[int] = None
     bound_host_ids: Optional[List[int]] = None
     notes: Optional[str] = None
+
+    @field_validator("domain_name")
+    @classmethod
+    def clean_domain_name(cls, v: Optional[str]) -> str:
+        return normalize_domain_name(v)
+
+    @field_validator("env")
+    @classmethod
+    def validate_env(cls, v: Optional[str]) -> str:
+        if v is None or not v.strip():
+            raise ValueError("env 不能为空")
+        return v
 
 class DomainResponse(DomainBase):
     model_config = ConfigDict(from_attributes=True)

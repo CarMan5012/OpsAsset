@@ -21,16 +21,16 @@
             <UploadCloud :size="38" style="color: #2563eb;" />
           </div>
           <div style="color: #0f172a; font-weight: 600;">
-            {{ selectedFile ? selectedFile.name : '点击选择或拖拽 Excel / CSV 文件到此处' }}
+            {{ selectedFile ? selectedFile.name : '点击选择文件' }}
           </div>
           <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
-            支持格式：.xlsx, .xls, .csv (最大 10MB)
+            Excel / CSV，最大 10 MB
           </div>
         </div>
 
         <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
           <el-button type="primary" :disabled="!selectedFile" :loading="importing" @click="executeImport">
-            开始导入并解析
+            开始导入
           </el-button>
         </div>
 
@@ -41,12 +41,12 @@
             <span>总行数: <b>{{ importResult.total_rows }}</b></span>
             <span style="color: #059669;">新增: <b>{{ importResult.inserted_count }}</b></span>
             <span style="color: #2563eb;">更新: <b>{{ importResult.updated_count }}</b></span>
-            <span style="color: #dc2626;">失败: <b>{{ importResult.failed_count }}</b></span>
+            <span style="color: #dc2626;">失败: <b>{{ importResult.error_count }}</b></span>
           </div>
           <div v-if="importResult.errors && importResult.errors.length > 0" style="margin-top: 10px; max-height: 140px; overflow-y: auto;">
             <div style="font-size: 12px; color: #dc2626; margin-bottom: 4px; font-weight: 600;">解析与导入明细异常:</div>
             <div v-for="(err, idx) in importResult.errors" :key="idx" style="font-size: 11.5px; color: #dc2626; font-family: monospace; line-height: 1.5;">
-              • {{ typeof err === 'object' ? `第 ${err.row || idx + 1} 行: ${err.message || JSON.stringify(err)}` : err }}
+              • {{ typeof err === 'object' ? `第 ${err.row || idx + 1} 行: ${err.reason}` : err }}
             </div>
           </div>
         </div>
@@ -66,15 +66,15 @@
         <!-- 筛选与格式栏 -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 12px;">
           <div>
-            <div style="font-size: 12px; color: #475569; font-weight: 600; margin-bottom: 4px;">过滤导出环境：</div>
-            <el-select v-model="exportParams.env" placeholder="全部环境 (默认全量)" clearable @change="fetchPreviewData" style="width: 100%;">
+            <div style="font-size: 12px; color: #475569; font-weight: 600; margin-bottom: 4px;">环境</div>
+            <el-select v-model="exportParams.env" placeholder="全部环境" clearable @change="fetchPreviewData" style="width: 100%;">
               <el-option label="全部环境" value="" />
               <el-option v-for="env in metaConfig.environments" :key="env.key" :label="env.label" :value="env.key" />
             </el-select>
           </div>
 
           <div>
-            <div style="font-size: 12px; color: #475569; font-weight: 600; margin-bottom: 4px;">导出文件格式：</div>
+            <div style="font-size: 12px; color: #475569; font-weight: 600; margin-bottom: 4px;">格式</div>
             <el-radio-group v-model="exportParams.format" size="default" style="margin-top: 2px;">
               <el-radio value="xlsx">Excel (.xlsx)</el-radio>
               <el-radio value="csv">CSV (.csv)</el-radio>
@@ -86,7 +86,7 @@
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
             <div style="font-size: 12.5px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 4px;">
-              <SlidersHorizontal :size="13" style="color: #2563eb;" /> 选择导出的数据列
+              <SlidersHorizontal :size="13" style="color: #2563eb;" /> 导出字段
               <span style="font-size: 11px; color: #64748b; font-weight: normal;">
                 (已选 <b style="color: #2563eb;">{{ selectedColumns.length }}</b> / {{ allColumns.length }} 列)
               </span>
@@ -119,7 +119,7 @@
         <div style="margin-bottom: 12px; flex: 1;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
             <div style="font-size: 12.5px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 6px;">
-              <Eye :size="13" style="color: #10b981;" /> 实时导出数据预览
+              <Eye :size="13" style="color: #10b981;" /> 数据预览
               <el-button link type="primary" size="small" :loading="previewLoading" @click="fetchPreviewData" title="刷新最新数据">
                 <RotateCw :size="12" style="margin-right: 2px;" /> 刷新数据
               </el-button>

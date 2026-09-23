@@ -87,22 +87,30 @@ def normalize_arch(val: Any) -> str:
     return s or "amd64"
 
 def normalize_env(val: Any) -> str:
-    if not val:
+    if val is None or pd.isna(val) or not str(val).strip():
         return "test"
     s = str(val).strip().lower()
     if s in ["prod", "production", "生产", "生产环境"]:
         return "prod"
-    return "test"
+    if s in ["test", "testing", "测试", "测试环境"]:
+        return "test"
+    if s in ["development", "开发", "开发环境"]:
+        return "dev"
+    if s in ["staging", "uat", "预发", "预发布"]:
+        return "stage"
+    return s
 
 def normalize_status(val: Any) -> str:
-    if not val:
+    if val is None or pd.isna(val) or not str(val).strip():
         return "online"
     s = str(val).strip().lower()
     if s in ["offline", "下线", "离线", "停止", "stopped"]:
         return "offline"
-    if s in ["maintenance", "维护", "维护中"]:
+    if s in ["maintenance", "维护", "维护中", "warning"]:
         return "maintenance"
-    return "online"
+    if s in ["online", "running", "在线", "正常"]:
+        return "online"
+    return s
 
 def generate_excel_template() -> io.BytesIO:
     """生成标准化 Excel 导入模板 (科技石板深蓝高颜值方案，支持 DataValidation 下拉验证)"""

@@ -1,8 +1,8 @@
 <template>
-  <el-dialog v-model="visible" :title="'服务与集群节点资产全景明细 - ' + (selectedViewCluster?.name || '')" width="1280px" top="3vh" append-to-body destroy-on-close>
+  <el-dialog v-model="visible" :title="'节点详情 · ' + (selectedViewCluster?.name || '')" width="1280px" top="3vh" append-to-body destroy-on-close>
     <!-- 顶部集群基本信息与 4 大核心指标卡 -->
     <div style="margin-bottom: 18px;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+      <div class="node-summary-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
         <div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <span v-html="getMiddlewareLogo(selectedViewCluster?.cluster_type, 20)" style="display: inline-flex; align-items: center;"></span>
@@ -12,7 +12,7 @@
             {{ selectedViewCluster?.description || '暂无业务描述' }}
           </div>
         </div>
-        <div style="display: flex; gap: 8px; align-items: center; white-space: nowrap;">
+        <div class="node-summary-meta" style="display: flex; gap: 8px; align-items: center; white-space: nowrap;">
           <span v-if="selectedViewCluster?.port" class="port-badge" :class="{ 'port-badge-range': isPortRange(selectedViewCluster?.port) }" style="font-size: 11px; padding: 2px 7px;">
             <DoorOpen :size="12" style="color: #0d9488;" />
             端口: {{ selectedViewCluster?.port }}
@@ -26,7 +26,7 @@
       </div>
 
       <!-- 4 张高精度资源汇总卡 -->
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;">
+      <div class="node-summary-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;">
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
           <div style="font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 5px;"><Server :size="13" /> 关联节点总量</div>
           <div style="font-size: 20px; font-weight: 700; color: #2563eb; margin-top: 4px;">
@@ -35,19 +35,19 @@
         </div>
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
           <div style="font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 5px;"><Cpu :size="13" /> 集群 CPU 总核数</div>
-          <div style="font-size: 20px; font-weight: 700; color: #0f172a; margin-top: 4px; font-family: 'JetBrains Mono', monospace;">
+          <div style="font-size: 20px; font-weight: 700; color: #0f172a; margin-top: 4px; font-family: var(--font-data);">
             {{ clusterSummary.totalCpu }} <span style="font-size: 12px; color: #64748b; font-weight: normal;">核</span>
           </div>
         </div>
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
           <div style="font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 5px;"><Database :size="13" /> 集群内存总容量</div>
-          <div style="font-size: 20px; font-weight: 700; color: #0f172a; margin-top: 4px; font-family: 'JetBrains Mono', monospace;">
+          <div style="font-size: 20px; font-weight: 700; color: #0f172a; margin-top: 4px; font-family: var(--font-data);">
             {{ formatStorageFull(clusterSummary.totalMem) }}
           </div>
         </div>
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
           <div style="font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 5px;"><HardDrive :size="13" /> 集群数据盘总容量</div>
-          <div style="font-size: 20px; font-weight: 700; color: #0f172a; margin-top: 4px; font-family: 'JetBrains Mono', monospace;">
+          <div style="font-size: 20px; font-weight: 700; color: #0f172a; margin-top: 4px; font-family: var(--font-data);">
             {{ formatStorageFull(clusterSummary.totalDisk) }}
           </div>
         </div>
@@ -55,12 +55,12 @@
     </div>
 
     <!-- 节点过滤栏与全量明细表格 -->
-    <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+    <div class="node-filter-bar" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
       <div style="font-weight: 600; font-size: 14px; color: #0f172a;">
         节点列表资产明细 (匹配到 {{ filteredViewNodes.length }} / {{ selectedViewCluster?.nodes?.length || 0 }} 台)
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <el-input v-model="keyword" placeholder="过滤主机名/内网IP/公网IP/系统" size="small" clearable style="width: 260px;">
+        <el-input v-model="keyword" class="node-filter-input" placeholder="过滤主机名/内网IP/公网IP/系统" size="small" clearable style="width: 260px;">
           <template #prefix><Search :size="14" style="color: #94a3b8;" /></template>
         </el-input>
       </div>

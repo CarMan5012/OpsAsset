@@ -2,33 +2,36 @@
   <section class="tab-pane">
     <div class="ops-card">
       <!-- 顶部筛选过滤工具栏 -->
-      <div class="filter-bar">
+      <div class="filter-bar host-filter-bar" :class="{ 'show-advanced': showAdvancedFilters }">
         <div class="filter-group">
           <el-input v-model="hostFilter.keyword" placeholder="搜索主机名/IP/系统/备注" clearable
-            @input="handleSearchInput" @clear="handleSearchInput" @keyup.enter="fetchHosts" style="width: 230px;">
+            @input="handleSearchInput" @clear="handleSearchInput" @keyup.enter="handleFilterChange" style="width: 230px;">
             <template #prefix><Search :size="14" style="color: #94a3b8;" /></template>
           </el-input>
-          <el-select v-model="hostFilter.env" placeholder="全部环境" clearable @change="fetchHosts" style="width: 110px;">
+          <el-button class="mobile-filter-toggle" @click="showAdvancedFilters = !showAdvancedFilters">
+            {{ showAdvancedFilters ? '收起筛选' : '更多筛选' }}
+          </el-button>
+          <el-select v-model="hostFilter.env" class="advanced-filter" placeholder="全部环境" clearable @change="handleFilterChange" style="width: 110px;">
             <el-option v-for="env in metaConfig.environments" :key="env.key" :label="env.label" :value="env.key" />
           </el-select>
-          <el-select v-model="hostFilter.status" placeholder="全部状态" clearable @change="fetchHosts" style="width: 110px;">
+          <el-select v-model="hostFilter.status" class="advanced-filter" placeholder="全部状态" clearable @change="handleFilterChange" style="width: 110px;">
             <el-option v-for="st in metaConfig.host_statuses" :key="st.key" :label="st.label" :value="st.key" />
           </el-select>
-          <el-select v-model="hostFilter.arch" placeholder="全部架构" clearable @change="fetchHosts" style="width: 110px;">
+          <el-select v-model="hostFilter.arch" class="advanced-filter" placeholder="全部架构" clearable @change="handleFilterChange" style="width: 110px;">
             <el-option v-for="a in metaConfig.cpu_architectures" :key="a.key" :label="a.label" :value="a.key" />
           </el-select>
-          <el-select v-model="hostFilter.cluster_id" placeholder="按归属集群筛选" clearable @change="fetchHosts" style="width: 160px;">
+          <el-select v-model="hostFilter.cluster_id" class="advanced-filter" placeholder="按归属集群筛选" clearable @change="handleFilterChange" style="width: 160px;">
             <el-option v-for="c in clusterList" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
-          <el-button type="primary" @click="fetchHosts">查询</el-button>
+          <el-button type="primary" @click="handleFilterChange">查询</el-button>
           <el-button @click="resetHostFilter">重置</el-button>
         </div>
 
-        <div style="display: flex; gap: 8px;">
+        <div class="filter-actions" style="display: flex; gap: 8px;">
           <el-button v-if="selectedHostIds.length > 0" type="danger" plain @click="handleBatchDelete">
             批量删除 ({{ selectedHostIds.length }})
           </el-button>
-          <el-button type="success" plain @click="openExportDialog">
+          <el-button @click="openExportDialog">
             <Download :size="14" style="margin-right: 4px;" />
             {{ selectedHostIds.length > 0 ? `导出选中 (${selectedHostIds.length})` : '导出资产' }}
           </el-button>
@@ -41,13 +44,13 @@
       <!-- 主机表格 (所有字段独立展示，支持多维度排序与等宽精美排版) -->
       <el-table :data="hostsData.items" table-layout="fixed" style="width: 100%" max-height="calc(100vh - 245px)"
         @selection-change="handleSelectionChange" @sort-change="handleSortChange"
-        :default-sort="{ prop: 'id', order: 'ascending' }" v-loading="loading">
+        :default-sort="{ prop: 'id', order: 'descending' }" v-loading="loading">
 
         <el-table-column type="selection" width="45" align="center" fixed="left"></el-table-column>
         
         <el-table-column type="index" label="#" width="55" align="center" fixed="left" :index="(i) => (hostsData.page - 1) * hostsData.size + i + 1">
           <template #default="{ $index }">
-            <span style="font-family: 'JetBrains Mono'; font-size: 12px; color: #64748b;">
+            <span style="font-family: var(--font-data); font-size: 12px; color: #64748b;">
               {{ (hostsData.page - 1) * hostsData.size + $index + 1 }}
             </span>
           </template>
@@ -148,7 +151,7 @@
         <el-table-column prop="arch" label="架构" width="85" align="center" sortable="custom">
           <template #default="{ row }">
             <div class="cell-box">
-              <el-tag v-if="row.arch" size="small" :type="row.arch === 'arm64' ? 'warning' : 'info'" style="font-family: 'JetBrains Mono';">
+              <el-tag v-if="row.arch" size="small" :type="row.arch === 'arm64' ? 'warning' : 'info'" style="font-family: var(--font-data);">
                 {{ getArchLabel(row.arch) }}
               </el-tag>
             </div>
@@ -253,7 +256,7 @@
 
         <el-table-column prop="updated_at" label="更新时间" width="120" align="center">
           <template #default="{ row }">
-            <span style="font-size: 11px; color: #64748b; font-family: 'JetBrains Mono';">
+            <span style="font-size: 11px; color: #64748b; font-family: var(--font-data);">
               {{ formatDateTime(row.updated_at || row.created_at).slice(5, 16) }}
             </span>
           </template>
@@ -332,7 +335,7 @@
     </el-popover>
 
     <!-- 新增/编辑主机弹窗 -->
-    <HostFormDialog ref="hostFormDialogRef" :meta-config="metaConfig" @saved="fetchHosts" />
+    <HostFormDialog ref="hostFormDialogRef" :meta-config="metaConfig" @saved="handleHostSaved" />
 
     <!-- 资产导出与实时预览弹窗 -->
     <HostExportDialog ref="hostExportDialogRef" :meta-config="metaConfig" />
@@ -371,6 +374,7 @@ const props = defineProps({
 const emit = defineEmits(['filter-cluster', 'data-changed'])
 
 const loading = ref(false)
+const showAdvancedFilters = ref(false)
 const hostFormDialogRef = ref(null)
 const hostExportDialogRef = ref(null)
 const selectedHostIds = ref([])
@@ -504,6 +508,11 @@ const handleSizeChange = (val) => {
   fetchHosts()
 }
 
+const handleFilterChange = () => {
+  hostsData.page = 1
+  fetchHosts()
+}
+
 const resetHostFilter = () => {
   Object.assign(hostFilter, {
     keyword: '',
@@ -544,12 +553,24 @@ const fetchHosts = async (silent = false) => {
     }
     const res = await OpsApi.getHosts(params)
     hostsData.total = res.data.total
+    const maxPage = Math.max(1, Math.ceil(hostsData.total / hostsData.size))
+    if (hostsData.page > maxPage) {
+      hostsData.page = maxPage
+      return await fetchHosts(true)
+    }
     hostsData.items = res.data.items || []
+    return true
   } catch (e) {
     if (!silent) ElMessage.error('获取主机列表失败')
+    return false
   } finally {
     loading.value = false
   }
+}
+
+const handleHostSaved = async () => {
+  await fetchHosts()
+  emit('data-changed')
 }
 
 const openCreateHostDialog = () => {

@@ -109,10 +109,11 @@ def handle_export_assets(
     if ids and ids.strip():
         try:
             id_list = [int(i.strip()) for i in ids.split(",") if i.strip()]
-            if id_list:
-                query = query.filter(Host.id.in_(id_list))
+            if not id_list:
+                raise ValueError("empty ids")
+            query = query.filter(Host.id.in_(id_list))
         except ValueError:
-            pass
+            raise HTTPException(status_code=400, detail="主机 ID 列表格式错误")
     else:
         if env:
             query = query.filter(Host.env == env)

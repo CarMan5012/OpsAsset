@@ -15,7 +15,7 @@
         </div>
         <div>
           <div style="font-size: 15.5px; font-weight: 700; color: #0f172a;">
-            {{ isEdit ? '编辑域名资产' : '添加域名资产' }}
+            {{ isEdit ? '编辑域名' : '新增域名' }}
           </div>
         </div>
       </div>
@@ -23,10 +23,10 @@
 
     <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="pro-modal-form">
       <!-- 1. 域名 -->
-      <el-form-item label="公网域名*" prop="domain_name">
+      <el-form-item label="域名" prop="domain_name">
         <el-input
           v-model="form.domain_name"
-          placeholder="例如: www.hsh.139sc.com 或 api.example.com"
+          placeholder="如 api.example.com"
           clearable
           @blur="cleanDomainInput"
         >
@@ -38,7 +38,7 @@
 
       <!-- 2. 绑定公网IP (多选下拉 + 自定义输入) 与 服务端口 (2列排布) -->
       <div class="form-row-2col">
-        <el-form-item label="绑定公网 IP (支持选择或回车输入多个 IPv4/IPv6)">
+        <el-form-item label="公网 IP">
           <el-select
             v-model="form.public_ips"
             multiple
@@ -47,7 +47,7 @@
             default-first-option
             collapse-tags
             collapse-tags-tooltip
-            placeholder="请勾选或输入IP按回车"
+            placeholder="选择或输入 IP，回车添加"
             style="width: 100%;"
           >
             <el-option
@@ -57,22 +57,22 @@
               :value="item.ip"
             >
               <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 12.5px;">{{ item.ip }}</span>
+                <span style="font-family: var(--font-data); font-weight: 600; font-size: 12.5px;">{{ item.ip }}</span>
                 <span style="color: #64748b; font-size: 11.5px; margin-left: 8px;">{{ item.hostname }}</span>
               </div>
             </el-option>
           </el-select>
         </el-form-item>
 
-        <el-form-item label="对外服务端口" prop="port">
-          <el-input v-model="form.port" placeholder="如: 80, 443" clearable />
+        <el-form-item label="服务端口" prop="port">
+          <el-input v-model="form.port" placeholder="如 80, 443" clearable />
         </el-form-item>
       </div>
 
       <!-- 3. 所属环境 与 关联承载主机 (100% 联动字典配置) -->
       <div class="form-row-2col">
-        <el-form-item label="所属运行环境*" prop="env">
-          <el-select v-model="form.env" style="width: 100%;">
+        <el-form-item label="环境" prop="env">
+          <el-select v-model="form.env" placeholder="选择环境" style="width: 100%;">
             <el-option
               v-for="env in envOptions"
               :key="env.key"
@@ -82,10 +82,10 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="关联承载主机 (支持多选2台及以上)">
+        <el-form-item label="关联主机">
           <el-select
             v-model="form.bound_host_ids"
-            placeholder="可选择多台承载主机"
+            placeholder="选择主机，可多选"
             multiple
             filterable
             collapse-tags
@@ -103,10 +103,10 @@
       </div>
 
       <!-- 4. 备注 -->
-      <el-form-item label="业务备注说明" prop="notes" style="margin-bottom: 0;">
+      <el-form-item label="备注" prop="notes" style="margin-bottom: 0;">
         <el-input
           v-model="form.notes"
-          placeholder="例如: 阿里云DNS解析 / 核心双机网关 / SSL到期日等"
+          placeholder="选填"
           clearable
         />
       </el-form-item>
@@ -116,7 +116,7 @@
       <div style="display: flex; justify-content: flex-end; gap: 8px;">
         <el-button @click="visible = false">取消</el-button>
         <el-button type="primary" :loading="submitting" @click="handleSubmit">
-          {{ isEdit ? '保存修改' : '确认添加' }}
+          {{ isEdit ? '保存' : '创建' }}
         </el-button>
       </div>
     </template>
@@ -161,8 +161,8 @@ const envOptions = computed(() => {
 const form = reactive({
   domain_name: '',
   public_ips: [],
-  port: '80, 443',
-  env: 'prod',
+  port: '',
+  env: '',
   bound_host_ids: [],
   notes: ''
 })
@@ -170,7 +170,8 @@ const form = reactive({
 const rules = {
   domain_name: [
     { required: true, message: '请输入域名', trigger: 'blur' }
-  ]
+  ],
+  env: [{ required: true, message: '请选择环境', trigger: 'change' }]
 }
 
 const hostOptions = computed(() => {
@@ -209,7 +210,6 @@ const cleanDomainInput = () => {
 }
 
 const open = (row = null) => {
-  const defaultEnv = envOptions.value[0]?.key || 'prod'
   if (row) {
     isEdit.value = true
     currentId.value = row.id
@@ -217,8 +217,8 @@ const open = (row = null) => {
     form.public_ips = row.public_ip
       ? row.public_ip.split(/[,，;\s\n]+/).map(s => s.trim()).filter(Boolean)
       : []
-    form.port = row.port || '80, 443'
-    form.env = row.env || defaultEnv
+    form.port = row.port || ''
+    form.env = row.env || ''
     form.bound_host_ids = row.bound_host_ids?.length
       ? [...row.bound_host_ids]
       : (row.bound_host_id ? [row.bound_host_id] : [])
@@ -228,8 +228,8 @@ const open = (row = null) => {
     currentId.value = null
     form.domain_name = ''
     form.public_ips = []
-    form.port = '80, 443'
-    form.env = defaultEnv
+    form.port = ''
+    form.env = ''
     form.bound_host_ids = []
     form.notes = ''
   }

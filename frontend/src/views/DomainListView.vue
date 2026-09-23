@@ -4,9 +4,6 @@
       <!-- 顶部工具栏 -->
       <div class="filter-bar">
         <div class="filter-group">
-          <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin-right: 8px; display: flex; align-items: center; gap: 6px;">
-            <Globe :size="16" style="color: #2563eb;" /> 公网域名资产台账
-          </div>
           <el-input
             v-model="filter.keyword"
             placeholder="搜索域名/公网IP/解析IP/主机/备注"
@@ -26,7 +23,7 @@
           </el-select>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="filter-actions" style="display: flex; align-items: center; gap: 10px;">
           <el-button :loading="checkingAll" @click="handleCheckAllDns">
             <RefreshCw :size="13" style="margin-right: 4px;" :class="{ 'spin-anim': checkingAll }" />
             一键比对解析 (IPv4/IPv6)
@@ -78,15 +75,15 @@
                 <div
                   v-for="(ip, idx) in parseIps(row.public_ip)"
                   :key="idx"
-                  style="display: flex; align-items: center; gap: 5px;"
+                  class="ip-copy-row"
                 >
                   <span
                     :class="isIpv6(ip) ? 'badge-ip-v6' : 'badge-ip-v4'"
-                    style="font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 3px; line-height: 1;"
+                    style="font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 3px; line-height: 1; flex-shrink: 0;"
                   >
                     {{ isIpv6(ip) ? 'IPv6' : 'IPv4' }}
                   </span>
-                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: #1e293b;">
+                  <span class="ip-copy-value" style="font-family: var(--font-data); font-size: 12px; font-weight: 600; color: #1e293b;">
                     {{ ip }}
                   </span>
                   <Copy
@@ -110,15 +107,15 @@
                   <div
                     v-for="(ip, idx) in parseIps(row.resolved_ip)"
                     :key="idx"
-                    style="display: flex; align-items: center; gap: 5px;"
+                    class="ip-copy-row"
                   >
                     <span
                       :class="isIpv6(ip) ? 'badge-ip-v6' : 'badge-ip-v4'"
-                      style="font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 3px; line-height: 1;"
+                      style="font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 3px; line-height: 1; flex-shrink: 0;"
                     >
                       {{ isIpv6(ip) ? 'IPv6' : 'IPv4' }}
                     </span>
-                    <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #334155;">
+                    <span class="ip-copy-value" style="font-family: var(--font-data); font-size: 12px; color: #334155;">
                       {{ ip }}
                     </span>
                     <Copy
@@ -192,7 +189,7 @@
                     <Server :size="13" style="color: #2563eb;" />
                     <span style="font-weight: 600; color: #0f172a; font-size: 12.5px;">{{ h.hostname }}</span>
                   </div>
-                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #64748b; margin-top: 1px;">
+                  <div style="font-family: var(--font-data); font-size: 11px; color: #64748b; margin-top: 1px;">
                     内网: <span style="color: #334155; font-weight: 600;">{{ h.private_ip }}</span>
                     <span v-if="h.public_ip" style="color: #2563eb; margin-left: 6px;">公网: {{ h.public_ip }}</span>
                   </div>
@@ -205,7 +202,8 @@
           <!-- 5. 服务端口 -->
           <el-table-column prop="port" label="服务端口" width="115" align="center">
             <template #default="{ row }">
-              <span class="port-badge">{{ row.port || '80, 443' }}</span>
+              <span v-if="row.port" class="port-badge">{{ row.port }}</span>
+              <span v-else class="empty-value">—</span>
             </template>
           </el-table-column>
 
@@ -276,7 +274,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Globe, Search, RefreshCw, ExternalLink, Copy, Server } from 'lucide-vue-next'
 import OpsApi from '../api'
@@ -308,10 +306,11 @@ const pagination = reactive({
   page: 1,
   size: 50
 })
+watch([() => filter.env, () => filter.resolve_status], () => { pagination.page = 1 })
 
 const getEnvLabel = (envKey) => {
   const found = props.metaConfig.environments?.find(e => e.key === envKey)
-  return found ? found.label : (envKey === 'prod' ? '生产' : '测试')
+  return found ? found.label : envKey
 }
 
 const copyText = (text) => {
@@ -367,8 +366,14 @@ const pagedDomainList = computed(() => {
 
 const fetchHosts = async () => {
   try {
-    const res = await OpsApi.getHosts({ page: 1, size: 500 })
-    hostList.value = res.data?.items || []
+    const first = await OpsApi.getHosts({ page: 1, size: 500 })
+    const items = [...(first.data?.items || [])]
+    const pages = Math.ceil((first.data?.total || 0) / 500)
+    for (let page = 2; page <= pages; page++) {
+      const res = await OpsApi.getHosts({ page, size: 500 })
+      items.push(...(res.data?.items || []))
+    }
+    hostList.value = items
   } catch (e) {
     console.error('加载主机列表失败:', e)
   }
@@ -377,10 +382,19 @@ const fetchHosts = async () => {
 const fetchDomains = async (silent = false) => {
   if (!silent) loading.value = true
   try {
-    const res = await OpsApi.getDomains({ page: 1, size: 200 })
-    domainList.value = res.data?.items || []
+    const first = await OpsApi.getDomains({ page: 1, size: 200 })
+    const items = [...(first.data?.items || [])]
+    const pages = Math.ceil((first.data?.total || 0) / 200)
+    for (let page = 2; page <= pages; page++) {
+      const res = await OpsApi.getDomains({ page, size: 200 })
+      items.push(...(res.data?.items || []))
+    }
+    domainList.value = items
+    pagination.page = Math.min(pagination.page, Math.max(1, Math.ceil(filteredDomains.value.length / pagination.size)))
+    return true
   } catch (e) {
     if (!silent) ElMessage.error('获取域名资产失败')
+    return false
   } finally {
     loading.value = false
   }
@@ -398,6 +412,7 @@ const handleCheckSingleDns = async (row) => {
     const data = res.data
     row.resolved_ip = data.resolved_ip
     row.resolve_status = data.resolve_status
+    emit('data-changed')
     if (data.is_matched) {
       ElMessage.success({ message: `${row.domain_name}: 解析正常 (IPv4/IPv6已比对)`, duration: 3000 })
     } else if (data.resolve_status === 'mismatched') {
@@ -418,6 +433,7 @@ const handleCheckAllDns = async () => {
     const res = await OpsApi.checkAllDomainDns()
     ElMessage.success(`已完成 ${res.data?.length || 0} 个域名的 IPv4/IPv6 实际解析比对`)
     await fetchDomains(true)
+    emit('data-changed')
   } catch (e) {
     ElMessage.error('批量比对失败')
   } finally {
@@ -453,6 +469,21 @@ defineExpose({ fetchDomains })
 </script>
 
 <style scoped>
+.ip-copy-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+}
+.ip-copy-value {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+}
+.ip-copy-row > svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
 .badge-ip-v4 {
   background: #eff6ff;
   color: #2563eb;

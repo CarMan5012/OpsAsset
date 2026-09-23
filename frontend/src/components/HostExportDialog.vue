@@ -26,12 +26,12 @@
       <div class="export-config-panel">
         <div class="panel-section">
           <div class="section-label">
-            <Layers :size="14" style="color: #2563eb;" /> 导出范围与格式
+            <Layers :size="14" style="color: #2563eb;" /> 导出设置
           </div>
           <div class="config-row">
             <div class="config-item">
               <span class="sub-label">导出范围：</span>
-              <el-radio-group v-model="exportScope" size="small" @change="refreshPreviewData">
+              <el-radio-group v-model="exportScope" size="small" @change="handleScopeChange">
                 <el-radio-button value="all">
                   全部环境
                 </el-radio-button>
@@ -62,7 +62,7 @@
         <div class="panel-section" style="margin-top: 14px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <div class="section-label">
-              <SlidersHorizontal :size="14" style="color: #2563eb;" /> 选择导出的数据列
+              <SlidersHorizontal :size="14" style="color: #2563eb;" /> 导出字段
               <span style="font-size: 11.5px; color: #64748b; font-weight: normal; margin-left: 6px;">
                 (已选 <b style="color: #2563eb;">{{ selectedColumns.length }}</b> / {{ allColumns.length }} 列)
               </span>
@@ -73,9 +73,9 @@
               <el-divider direction="vertical" />
               <el-button link type="primary" size="small" @click="invertColumns">反选</el-button>
               <el-divider direction="vertical" />
-              <el-button link type="primary" size="small" @click="selectDefaultColumns">常用默认列</el-button>
+              <el-button link type="primary" size="small" @click="selectDefaultColumns">常用</el-button>
               <el-divider direction="vertical" />
-              <el-button link type="primary" size="small" @click="selectHardwareColumns">硬件规格列</el-button>
+              <el-button link type="primary" size="small" @click="selectHardwareColumns">硬件</el-button>
             </div>
           </div>
 
@@ -100,7 +100,7 @@
       <div class="preview-section" style="margin-top: 16px;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
           <div style="font-size: 13px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-            <Eye :size="14" style="color: #10b981;" /> 实时导出数据预览
+            <Eye :size="14" style="color: #10b981;" /> 数据预览
             <el-button v-if="selectedColumns.length > 0" link type="primary" size="small" :loading="previewLoading" @click="refreshPreviewData" title="刷新最新数据">
               <RotateCw :size="12" style="margin-right: 2px;" /> 刷新数据
             </el-button>
@@ -113,8 +113,7 @@
         <!-- 未勾选任何列时的空状态展示 -->
         <div v-if="selectedColumns.length === 0" style="padding: 28px 16px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; text-align: center;">
           <SlidersHorizontal :size="26" style="color: #94a3b8; margin: 0 auto 6px; display: block;" />
-          <div style="font-size: 13px; font-weight: 600; color: #475569;">未勾选任何导出字段</div>
-          <div style="font-size: 11.5px; color: #94a3b8; margin-top: 3px;">请在上方勾选需要导出的数据列以生成预览与文件</div>
+          <div style="font-size: 13px; font-weight: 600; color: #475569;">请选择导出字段</div>
         </div>
 
         <!-- 预览表格 -->
@@ -142,7 +141,7 @@
                 <!-- 针对特殊列的美化展示 -->
                 <span v-if="colKey === 'index'" style="color: #64748b; font-weight: 600;">{{ row.index }}</span>
                 <span v-else-if="colKey === 'hostname'" style="font-weight: 600; color: #0f172a;">{{ row.hostname }}</span>
-                <span v-else-if="colKey === 'private_ip'" style="font-family: 'JetBrains Mono'; color: #2563eb; font-weight: 600;">{{ row.private_ip }}</span>
+                <span v-else-if="colKey === 'private_ip'" style="font-family: var(--font-data); color: #2563eb; font-weight: 600;">{{ row.private_ip }}</span>
                 <span v-else-if="colKey === 'env'" class="env-tag" :class="getRawEnvClass(row._raw?.env)">{{ row.env }}</span>
                 <span v-else-if="colKey === 'status'">
                   <span class="preview-status-pill" :style="getStatusPillStyle(row._raw?.status)">
@@ -185,7 +184,7 @@
             :disabled="selectedColumns.length === 0 || previewTotal === 0"
             @click="executeExport"
           >
-            <Download :size="14" style="margin-right: 4px;" /> 立即导出并下载
+            <Download :size="14" style="margin-right: 4px;" /> 导出
           </el-button>
         </div>
       </div>
@@ -348,13 +347,9 @@ const refreshPreviewData = async () => {
     }
 
     if (exportScope.value === 'selected' && selectedIds.value.length > 0) {
-      // 勾选主机预览
-      const res = await OpsApi.getHosts({ page: 1, size: 500, sort_by: currentFilters.sort_by || 'id', sort_order: currentFilters.sort_order || 'desc' })
-      const allFetched = res.data.items || []
-      const matched = allFetched.filter(h => selectedIds.value.includes(h.id))
-      previewTotal.value = matched.length
-      const start = (previewPage.value - 1) * previewPageSize.value
-      rawHostsData.value = matched.slice(start, start + previewPageSize.value)
+      const res = await OpsApi.getHosts({ ...params, ids: selectedIds.value.join(',') })
+      previewTotal.value = res.data.total || 0
+      rawHostsData.value = res.data.items || []
     } else {
       // 指定环境或全量
       if (exportScope.value && exportScope.value !== 'all') {
@@ -374,6 +369,11 @@ const refreshPreviewData = async () => {
   } finally {
     previewLoading.value = false
   }
+}
+
+const handleScopeChange = () => {
+  previewPage.value = 1
+  refreshPreviewData()
 }
 
 // 执行导出
@@ -396,16 +396,18 @@ const executeExport = async () => {
     if (exportScope.value === 'selected' && selectedIds.value.length > 0) {
       params.ids = selectedIds.value.join(',')
       envLabel = '_已选主机'
-    } else if (exportScope.value && exportScope.value !== 'all') {
-      params.env = exportScope.value
-      const foundEnv = (props.metaConfig?.environments || []).find(e => e.key === exportScope.value)
-      envLabel = `_${foundEnv ? foundEnv.label : exportScope.value}`
     } else {
+      if (exportScope.value && exportScope.value !== 'all') {
+        params.env = exportScope.value
+        const foundEnv = (props.metaConfig?.environments || []).find(e => e.key === exportScope.value)
+        envLabel = `_${foundEnv ? foundEnv.label : exportScope.value}`
+      } else {
+        envLabel = '_全部环境'
+      }
       if (currentFilters.keyword) params.keyword = currentFilters.keyword
       if (currentFilters.status) params.status = currentFilters.status
       if (currentFilters.arch) params.arch = currentFilters.arch
       if (currentFilters.cluster_id) params.cluster_id = currentFilters.cluster_id
-      envLabel = '_全部环境'
     }
 
     const res = await OpsApi.exportAssetsBlob(params)

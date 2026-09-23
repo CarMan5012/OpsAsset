@@ -55,6 +55,50 @@ def test_health_check():
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
 
+def test_batch_delete_cleans_bindings():
+    hosts = []
+    for suffix in ("a", "b"):
+        response = client.post("/api/hosts", json={"hostname": f"batch-{suffix}", "private_ip": f"10.250.0.{1 if suffix == 'a' else 2}"})
+        assert response.status_code == 200
+        hosts.append(response.json()["id"])
+    cluster = client.post("/api/clusters", json={"name": "batch-test-cluster", "cluster_type": "Redis"}).json()
+    bind = client.post(f"/api/clusters/{cluster['id']}/bind-hosts", json={"nodes": [{"host_id": host_id} for host_id in hosts]})
+    assert bind.status_code == 200
+    domain = client.post("/api/domains", json={"domain_name": "batch-test.example.invalid", "bound_host_ids": hosts}).json()
+
+    response = client.post("/api/hosts/batch-delete", json=[hosts[0]])
+    assert response.status_code == 200
+    assert response.json()["deleted_count"] == 1
+    assert client.get(f"/api/clusters/{cluster['id']}").json()["node_count"] == 1
+    updated_domain = client.get(f"/api/domains/{domain['id']}").json()
+    assert updated_domain["bound_host_ids"] == [hosts[1]]
+    assert updated_domain["bound_host_id"] == hosts[1]
+
+    client.delete(f"/api/domains/{domain['id']}")
+    client.delete(f"/api/clusters/{cluster['id']}")
+    client.delete(f"/api/hosts/{hosts[1]}")
+
+def test_update_domain_rejects_missing_host():
+    domain = client.post("/api/domains", json={"domain_name": "missing-host.example.invalid"}).json()
+    try:
+        response = client.put(f"/api/domains/{domain['id']}", json={"bound_host_ids": [99999999]})
+        assert response.status_code == 400
+        assert client.get(f"/api/domains/{domain['id']}").json()["bound_host_ids"] == []
+    finally:
+        client.delete(f"/api/domains/{domain['id']}")
+
+def test_partial_dns_match_is_mismatched(monkeypatch):
+    import socket
+    from app.models import Domain
+    from app.routes.domains import do_resolve_and_compare
+
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *args, **kwargs: [(socket.AF_INET, None, None, None, ("1.2.3.4", 0))] if len(args) < 3 else [])
+    monkeypatch.setattr("app.routes.domains.query_direct_dns", lambda *args: [])
+    domain = Domain(id=1, domain_name="partial.example.invalid", public_ip="1.2.3.4, 5.6.7.8")
+    result = do_resolve_and_compare(domain)
+    assert result.resolve_status == "mismatched"
+    assert result.is_matched is False
+
 def test_meta_config():
     response = client.get("/api/config/meta")
     assert response.status_code == 200
@@ -542,6 +586,102 @@ def test_excel_styling_features():
     assert "1E293B" in str(exp_header_fill).upper()
 
 
+def test_invalid_export_ids_do_not_export_all_hosts():
+    response = client.get("/api/assets/export", params={"ids": "not-a-host-id"})
+    assert response.status_code == 400
+
+
+def test_host_ids_filter_returns_only_selected_hosts():
+    first = client.post("/api/hosts", json={"hostname": "ids-check-a", "private_ip": "10.250.21.1"})
+    second = client.post("/api/hosts", json={"hostname": "ids-check-b", "private_ip": "10.250.21.2"})
+    assert first.status_code == second.status_code == 200
+    first_id, second_id = first.json()["id"], second.json()["id"]
+    try:
+        response = client.get("/api/hosts", params={"ids": str(second_id)})
+        assert response.status_code == 200
+        assert response.json()["total"] == 1
+        assert [item["id"] for item in response.json()["items"]] == [second_id]
+        assert client.get("/api/hosts", params={"ids": "invalid"}).status_code == 400
+    finally:
+        client.delete(f"/api/hosts/{first_id}")
+        client.delete(f"/api/hosts/{second_id}")
+
+
+def test_import_keeps_custom_environment_and_status():
+    from app.services.excel_service import normalize_env, normalize_status
+
+    assert normalize_env("dev") == "dev"
+    assert normalize_env("预发") == "stage"
+    assert normalize_status("warning") == "maintenance"
+    assert normalize_status("pending") == "pending"
+
+
+def test_binding_missing_host_keeps_existing_nodes():
+    host_response = client.post("/api/hosts", json={"hostname": "bind-check", "private_ip": "10.250.20.1"})
+    cluster_response = client.post("/api/clusters", json={"name": "bind-check-cluster", "cluster_type": "Redis"})
+    assert host_response.status_code == 200
+    assert cluster_response.status_code == 200
+    host_id = host_response.json()["id"]
+    cluster_id = cluster_response.json()["id"]
+    try:
+        assert client.post(f"/api/clusters/{cluster_id}/bind-hosts", json={"nodes": [{"host_id": host_id}]}).status_code == 200
+        response = client.post(f"/api/clusters/{cluster_id}/bind-hosts", json={"nodes": [{"host_id": 99999999}]})
+        assert response.status_code == 400
+        assert client.get(f"/api/clusters/{cluster_id}").json()["node_count"] == 1
+    finally:
+        client.delete(f"/api/clusters/{cluster_id}")
+        client.delete(f"/api/hosts/{host_id}")
+
+
+def test_update_domain_normalizes_name(monkeypatch):
+    monkeypatch.setattr("app.routes.domains.do_resolve_and_compare", lambda domain: None)
+    created = client.post("/api/domains", json={"domain_name": "normalize-before.example.invalid"})
+    assert created.status_code == 200
+    domain_id = created.json()["id"]
+    try:
+        updated = client.put(f"/api/domains/{domain_id}", json={"domain_name": "HTTPS://NORMALIZE-AFTER.EXAMPLE.INVALID/path"})
+        assert updated.status_code == 200
+        assert updated.json()["domain_name"] == "normalize-after.example.invalid"
+        assert client.put(f"/api/domains/{domain_id}", json={"domain_name": "https://"}).status_code == 422
+    finally:
+        client.delete(f"/api/domains/{domain_id}")
+
+
+def test_dns_ipv6_equivalent_forms_match_without_global_timeout(monkeypatch):
+    import socket
+    from app.models import Domain
+    from app.routes.domains import do_resolve_and_compare
+
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *args, **kwargs: [
+        (socket.AF_INET6, None, None, None, ("2001:db8::1", 0, 0, 0))
+    ])
+    monkeypatch.setattr("app.routes.domains.query_direct_dns", lambda *args: [])
+    previous_timeout = socket.getdefaulttimeout()
+    domain = Domain(id=1, domain_name="ipv6.example.invalid", public_ip="2001:0db8:0:0:0:0:0:1")
+    result = do_resolve_and_compare(domain)
+    assert result.resolve_status == "matched"
+    assert socket.getdefaulttimeout() == previous_timeout
+
+
+def test_updates_reject_invalid_required_values():
+    host = client.post("/api/hosts", json={"hostname": "validation-host", "private_ip": "10.99.99.1"}).json()
+    cluster = client.post("/api/clusters", json={"name": "validation-cluster", "cluster_type": "Redis"}).json()
+    domain = client.post("/api/domains", json={"domain_name": "validation.example.invalid"}).json()
+    try:
+        for payload in ({"hostname": ""}, {"status": None}, {"cpu_cores": -1}):
+            assert client.put(f"/api/hosts/{host['id']}", json=payload).status_code == 422
+        for payload in ({"name": ""}, {"cluster_type": None}, {"env": None}):
+            assert client.put(f"/api/clusters/{cluster['id']}", json=payload).status_code == 422
+        assert client.put(f"/api/domains/{domain['id']}", json={"env": None}).status_code == 422
+        assert client.get(f"/api/hosts/{host['id']}").json()["hostname"] == "validation-host"
+        assert client.get(f"/api/clusters/{cluster['id']}").json()["name"] == "validation-cluster"
+        assert client.get(f"/api/domains/{domain['id']}").json()["env"] == "prod"
+    finally:
+        client.delete(f"/api/domains/{domain['id']}")
+        client.delete(f"/api/clusters/{cluster['id']}")
+        client.delete(f"/api/hosts/{host['id']}")
+
+
 def test_database_encryption_mechanism(tmp_path):
     """测试数据库透明加密与存量明文平滑自动迁移机制"""
     from app.database import auto_migrate_plain_to_cipher_if_needed
@@ -568,8 +708,3 @@ def test_database_encryption_mechanism(tmp_path):
     # 3. 验证旧明文库备份文件存在
     bak_file = tmp_path / "test_asset.db.bak_plain"
     assert bak_file.exists()
-
-
-
-
-

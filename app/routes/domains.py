@@ -1,6 +1,7 @@
 import socket
 import struct
 import re
+import ipaddress
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -54,7 +55,7 @@ def attach_hosts_to_domain(domain: Domain, host_map: Dict[int, Host]) -> DomainR
         id=domain.id,
         domain_name=domain.domain_name,
         public_ip=domain.public_ip or "",
-        port=domain.port or "80, 443",
+        port=domain.port or "",
         env=domain.env or "prod",
         bound_host_id=domain.bound_host_id,
         bound_host_ids=ids,
@@ -122,7 +123,6 @@ def do_resolve_and_compare(domain: Domain) -> DomainDnsCheckResult:
 
     # 1. 尝试系统 socket.getaddrinfo (查询所有 IPv4 + IPv6)
     try:
-        socket.setdefaulttimeout(3.0)
         addr_infos = socket.getaddrinfo(clean_name, None)
         for info in addr_infos:
             family, _, _, _, sockaddr = info
@@ -169,7 +169,14 @@ def do_resolve_and_compare(domain: Domain) -> DomainDnsCheckResult:
         message = "DNS 查询未返回任何 IPv4 或 IPv6 记录"
     elif expected_ips:
         # 智能比对：检查配置的绑定 IP 是否在解析到的集合中
-        matched_count = sum(1 for exp in expected_ips if exp in all_resolved)
+        def normalized_ip(value: str) -> str:
+            try:
+                return str(ipaddress.ip_address(value))
+            except ValueError:
+                return value
+
+        resolved_set = {normalized_ip(ip) for ip in all_resolved}
+        matched_count = sum(1 for exp in expected_ips if normalized_ip(exp) in resolved_set)
         if matched_count == len(expected_ips):
             resolve_status = "matched"
             is_matched = True
@@ -178,8 +185,8 @@ def do_resolve_and_compare(domain: Domain) -> DomainDnsCheckResult:
             details = " | ".join(filter(None, [v4_str, v6_str]))
             message = f"解析正常：绑定 IP 与 DNS 全部记录一致 ({details})"
         elif matched_count > 0:
-            resolve_status = "matched"
-            is_matched = True
+            resolve_status = "mismatched"
+            is_matched = False
             message = f"部分一致：{matched_count}/{len(expected_ips)} 个绑定 IP 已成功解析"
         else:
             resolve_status = "mismatched"
@@ -281,7 +288,7 @@ def create_domain(domain_in: DomainCreate, db: Session = Depends(get_db)):
     domain = Domain(
         domain_name=domain_in.domain_name,
         public_ip=domain_in.public_ip or "",
-        port=domain_in.port or "80, 443",
+        port=domain_in.port or "",
         env=domain_in.env or "prod",
         bound_host_id=primary_host_id,
         bound_host_ids=bound_host_ids_str,
@@ -330,10 +337,16 @@ def update_domain(domain_id: int, domain_in: DomainUpdate, db: Session = Depends
 
     if "bound_host_ids" in update_data and update_data["bound_host_ids"] is not None:
         host_ids = update_data["bound_host_ids"]
+        found_ids = {h.id for h in db.query(Host.id).filter(Host.id.in_(host_ids)).all()}
+        missing = [i for i in host_ids if i not in found_ids]
+        if missing:
+            raise HTTPException(status_code=400, detail=f"关联的主机 ID {missing} 不存在")
         domain.bound_host_ids = ",".join(str(i) for i in host_ids)
         domain.bound_host_id = host_ids[0] if host_ids else None
     elif "bound_host_id" in update_data:
         hid = update_data["bound_host_id"]
+        if hid and not db.query(Host.id).filter(Host.id == hid).first():
+            raise HTTPException(status_code=400, detail=f"关联的主机 ID {hid} 不存在")
         domain.bound_host_id = hid
         domain.bound_host_ids = str(hid) if hid else ""
 

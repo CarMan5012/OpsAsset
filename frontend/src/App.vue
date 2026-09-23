@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <header class="header">
       <div class="brand">
-        <BrandLogo :size="34" />
+        <BrandLogo />
         <div class="brand-title">资产管理系统</div>
       </div>
       <div class="nav-tabs">
@@ -37,7 +37,7 @@
     <main class="main-container">
       <!-- 1. 资产概览大盘 -->
       <DashboardView v-if="currentTab === 'dashboard'" :overview="overview" :meta-config="metaConfig"
-        @select-cluster="switchTab('clusters')" @select-domains="switchTab('domains')" />
+        @select-cluster="switchTab('clusters')" @select-domains="switchTab('domains')" @select-hosts="switchTab('hosts')" />
 
       <!-- 2. 主机资产管理 -->
       <HostListView v-if="currentTab === 'hosts'" ref="hostListViewRef" :meta-config="metaConfig" :cluster-list="clusterList"
@@ -120,8 +120,10 @@ const fetchDashboard = async (silent = false) => {
       }))
     }
     overview.value = data
+    return true
   } catch (e) {
     if (!silent) ElMessage.error('获取大盘数据失败')
+    return false
   }
 }
 
@@ -130,8 +132,10 @@ const fetchClusters = async (silent = false) => {
   try {
     const res = await OpsApi.getClusters()
     clusterList.value = res.data || []
+    return true
   } catch (e) {
     if (!silent) ElMessage.error('获取集群列表失败')
+    return false
   } finally {
     clustersLoading.value = false
   }
@@ -142,23 +146,32 @@ const fetchMetaConfig = async () => {
     const res = await OpsApi.getConfig()
     const normalized = normalizeMetaConfig(res.data || {})
     Object.assign(metaConfig, normalized)
+    return true
   } catch (e) {
     console.error('加载字典配置失败:', e)
+    return false
   }
 }
 
 const refreshAll = async () => {
   globalRefreshing.value = true
   try {
-    await Promise.all([
+    const results = await Promise.all([
       fetchMetaConfig(),
       fetchDashboard(true),
       fetchClusters(true)
     ])
     if (hostListViewRef.value?.fetchHosts) {
-      await hostListViewRef.value.fetchHosts(true)
+      results.push(await hostListViewRef.value.fetchHosts(true))
     }
-    ElMessage.success('全站数据已同步刷新')
+    if (domainListViewRef.value?.fetchDomains) {
+      results.push(await domainListViewRef.value.fetchDomains(true))
+    }
+    if (results.every(Boolean)) {
+      ElMessage.success('数据已刷新')
+    } else {
+      ElMessage.warning('部分数据刷新失败，请重试')
+    }
   } catch (e) {
     ElMessage.error('刷新失败')
   } finally {

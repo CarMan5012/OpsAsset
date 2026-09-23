@@ -1,4 +1,24 @@
+@font-face {
+  font-family: "Douyin Sans";
+  src: url("./fonts/DouyinSansBold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
+      --font-ui: "MiSans", "HarmonyOS Sans SC", "OPPO Sans", "Alibaba PuHuiTi 3.0", "Microsoft YaHei", sans-serif;
+      --font-heading: "Douyin Sans", var(--font-ui);
+      --font-data: var(--font-ui);
+      --text-xs: 12px;
+      --text-sm: 13px;
+      --text-base: 14px;
+      --text-title: 16px;
+      --text-metric: 24px;
+      --el-font-family: var(--font-ui);
+      --el-font-size-base: 14px;
+      --el-font-size-small: 13px;
+      --el-font-size-extra-small: 12px;
       --bg-color: #f8fafc;
       --card-bg: #ffffff;
       --card-border: #e2e8f0;
@@ -9,7 +29,7 @@
       --success: #10b981;
       --warning: #f59e0b;
       --danger: #ef4444;
-      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --font-mono: var(--font-data);
     }
 
     * {
@@ -19,7 +39,10 @@
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+      font-family: var(--font-ui);
+      font-size: var(--text-base);
+      line-height: 1.5;
+      font-variant-numeric: tabular-nums;
       background-color: var(--bg-color);
       color: var(--text-main);
       min-height: 100vh;
@@ -45,25 +68,12 @@
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
-    }
-
-    .brand-logo {
-      width: 36px;
-      height: 36px;
-      background: linear-gradient(135deg, #2563eb, #4f46e5);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 700;
-      font-size: 18px;
-      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+      gap: 10px;
     }
 
     .brand-title {
-      font-size: 18px;
+      font-family: var(--font-heading);
+      font-size: 17px;
       font-weight: 700;
       letter-spacing: -0.4px;
       color: #0f172a;
@@ -95,7 +105,7 @@
       border: none;
       background: transparent;
       color: #64748b;
-      font-size: 13px;
+      font-size: var(--text-sm);
       font-weight: 600;
       cursor: pointer;
       display: flex;
@@ -353,7 +363,7 @@
       font-size: 20px;
       font-weight: 700;
       color: #0f172a;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-data);
     }
 
     .metric-lbl {
@@ -427,7 +437,7 @@
 
     /* IP 单元格代码样式 (精致紧凑字号、强制单行不折行、完整展示) */
     .ip-code {
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-data);
       font-size: 11px;
       font-weight: 600;
       color: #2563eb;
@@ -479,7 +489,7 @@
 
     /* 端口与端口范围胶囊徽章样式 (单排一排紧凑展示) */
     .port-badge {
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-data);
       font-size: 10.5px;
       font-weight: 600;
       color: #0f172a;
@@ -577,7 +587,7 @@
 
     /* 内核版本徽标 */
     .kernel-badge {
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-data);
       font-size: 10.5px;
       font-weight: 500;
       color: #475569;
@@ -636,7 +646,7 @@
       background: #eff6ff;
       color: #1e40af;
       padding: 2px 7px;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-data);
       font-weight: 600;
       border-left: 1px solid #bfdbfe;
       display: flex;
@@ -717,7 +727,7 @@
     }
 
     .spc-code {
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-data);
       font-weight: 600;
       color: #2563eb;
       background: #eff6ff;
@@ -1014,7 +1024,7 @@
 
 /* ================= 端口范围标签与徽章增强 ================= */
 .port-badge {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-data);
   font-size: 11.5px;
   font-weight: 600;
   color: #0f172a;
@@ -1114,7 +1124,7 @@
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-data);
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 10px;
@@ -1323,5 +1333,287 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+@media (max-width: 1023px) {
+  .header {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+  }
+
+  .nav-tabs {
+    order: 3;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .node-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .bind-host-toolbar {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .bind-host-summary {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .bind-host-filters {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  .form-row-2col,
+  .form-row-3col {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0 !important;
+  }
+
+  .form-row-2col > *,
+  .form-row-3col > * {
+    min-width: 0;
+  }
+
+  .node-summary-header,
+  .node-filter-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .node-summary-meta {
+    flex-wrap: wrap;
+    white-space: normal !important;
+  }
+
+  .node-summary-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .node-filter-input {
+    width: min(260px, 100%) !important;
+  }
+
+  .bind-host-filters {
+    width: 100%;
+  }
+
+  .bind-host-env {
+    flex: 0 0 120px;
+  }
+
+  .bind-host-search {
+    flex: 1 1 180px;
+    min-width: 0;
+  }
+}
+
+.tab-pane > .ops-card > .filter-bar {
+  padding: 4px 0 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #e9eef5;
+  gap: 14px 20px;
+}
+
+.filter-group {
+  gap: 10px 12px;
+}
+
+.filter-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.filter-actions .el-button + .el-button,
+.filter-group .el-button + .el-button {
+  margin-left: 0;
+}
+
+.mobile-filter-toggle {
+  display: none;
+}
+
+.tab-pane > .ops-card > .filter-bar .el-input__wrapper,
+.tab-pane > .ops-card > .filter-bar .el-select__wrapper {
+  min-height: 36px;
+  padding: 0 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #dbe3ed inset;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.tab-pane > .ops-card > .filter-bar .el-input__wrapper:hover,
+.tab-pane > .ops-card > .filter-bar .el-select__wrapper:hover {
+  background: #fff;
+  box-shadow: 0 0 0 1px #aebed2 inset;
+}
+
+.tab-pane > .ops-card > .filter-bar .el-input__wrapper.is-focus,
+.tab-pane > .ops-card > .filter-bar .el-select__wrapper.is-focused {
+  background: #fff;
+  box-shadow: 0 0 0 1px #2563eb inset, 0 0 0 3px rgba(37, 99, 235, .12);
+}
+
+.tab-pane > .ops-card > .filter-bar .el-button {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.tab-pane > .ops-card > .filter-bar .el-button:not(.el-button--primary):hover {
+  background: #f1f5fb;
+  border-color: #cbd8e8;
+  color: #1e40af;
+}
+
+.tab-pane > .ops-card > .filter-bar .el-button--primary {
+  box-shadow: 0 2px 6px rgba(37, 99, 235, .14);
+}
+
+.tab-pane > .ops-card > .filter-bar .el-button:active {
+  transform: translateY(1px);
+}
+
+.tab-pane > .ops-card > .filter-bar .el-button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, .25);
+  outline-offset: 2px;
+}
+
+.tab-pane .el-table th.el-table__cell {
+  height: 40px !important;
+  padding: 8px 0 !important;
+}
+
+.tab-pane .el-table td.el-table__cell {
+  padding: 8px 0 !important;
+}
+
+.tab-pane .el-table td.el-table__cell .cell {
+  line-height: 1.5 !important;
+}
+
+@media (max-width: 1023px) {
+  .filter-actions {
+    width: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .tab-pane > .ops-card > .filter-bar {
+    padding: 0 0 14px;
+    margin-bottom: 16px;
+  }
+
+  .filter-group > .el-input,
+  .filter-group > .el-select {
+    width: 100% !important;
+  }
+
+  .mobile-filter-toggle {
+    display: inline-flex;
+  }
+
+  .host-filter-bar .advanced-filter {
+    display: none;
+  }
+
+  .host-filter-bar.show-advanced .advanced-filter {
+    display: inline-flex;
+  }
+}
+
+/* 统一文字层级：标题 16–17px，正文 14px，辅助信息 12–13px。 */
+.tab-pane h3,
+.tab-pane h4,
+.dashboard-clusters-title,
+.env-summary-head strong,
+.el-dialog__title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+.tab-pane h3,
+.dashboard-clusters-title {
+  font-size: var(--text-title) !important;
+  line-height: 1.4;
+}
+
+.tab-pane h4 {
+  font-size: 15px !important;
+  line-height: 1.45;
+}
+
+.el-dialog__title {
+  font-size: 17px !important;
+  line-height: 1.45;
+}
+
+.el-table {
+  font-size: 13px !important;
+}
+
+.el-table th.el-table__cell {
+  font-size: 12.5px !important;
+}
+
+.el-table td.el-table__cell {
+  font-size: 13px !important;
+}
+
+.el-table th.el-table__cell .cell,
+.el-table td.el-table__cell .cell {
+  line-height: 1.5 !important;
+}
+
+.el-input__inner,
+.el-select__selected-item,
+.el-textarea__inner,
+.el-form-item__label,
+.el-button {
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+
+.el-button--small,
+.el-input--small .el-input__inner,
+.el-select--small .el-select__selected-item {
+  font-size: 12.5px;
+}
+
+.pro-modal-form .el-form-item__label {
+  font-size: 13px !important;
+}
+
+.ip-code,
+.ip-code-public {
+  font-size: 12px !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.port-badge,
+.status-tag,
+.badge-kv,
+.kernel-badge,
+.env-tag {
+  font-size: 11.5px !important;
+}
+
+.port-range-tag,
+.port-more-count,
+.badge-ip-v4,
+.badge-ip-v6 {
+  font-size: 10.5px !important;
 }
 

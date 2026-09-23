@@ -1,7 +1,7 @@
 <template>
-  <el-dialog v-model="visible" :title="'调整绑定节点资产 - ' + (activeCluster?.name || '')" width="1160px" top="4vh" append-to-body destroy-on-close>
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
-      <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #475569;">
+  <el-dialog v-model="visible" :title="'绑定节点 · ' + (activeCluster?.name || '')" width="1160px" top="4vh" append-to-body destroy-on-close>
+    <div class="bind-host-toolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+      <div class="bind-host-summary" style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #475569;">
         <span style="font-weight: 700; color: #0f172a; font-size: 14px;">目标集群: {{ activeCluster?.name }}</span>
         <span class="env-tag" :class="activeCluster?.env">{{ getEnvLabel(activeCluster?.env) }}</span>
         <div class="badge-kv">
@@ -9,12 +9,12 @@
           <span v-if="activeCluster?.version" class="badge-kv-val">{{ activeCluster.version }}</span>
         </div>
       </div>
-      <div style="display: flex; gap: 8px; align-items: center;">
-        <el-select v-model="bindEnvFilter" placeholder="全部环境" size="small" style="width: 120px;" clearable>
+      <div class="bind-host-filters" style="display: flex; gap: 8px; align-items: center;">
+        <el-select v-model="bindEnvFilter" class="bind-host-env" placeholder="全部环境" size="small" style="width: 120px;" clearable>
           <el-option label="全部环境" value="" />
           <el-option v-for="env in metaConfig.environments" :key="env.key" :label="env.label" :value="env.key" />
         </el-select>
-        <el-input v-model="bindKeyword" placeholder="搜索主机名/IP/系统" size="small" clearable style="width: 200px;">
+        <el-input v-model="bindKeyword" class="bind-host-search" placeholder="搜索主机名/IP/系统" size="small" clearable style="width: 200px;">
           <template #prefix><Search :size="13" style="color: #94a3b8;" /></template>
         </el-input>
       </div>

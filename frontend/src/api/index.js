@@ -15,7 +15,7 @@ export const OpsApi = {
   createHost: (data) => http.post('/hosts', data),
   updateHost: (id, data) => http.put(`/hosts/${id}`, data),
   deleteHost: (id) => http.delete(`/hosts/${id}`),
-  batchDeleteHosts: (hostIds) => http.post('/hosts/batch-delete', { host_ids: hostIds }),
+  batchDeleteHosts: (hostIds) => http.post('/hosts/batch-delete', hostIds),
 
   // 集群与服务管理
   getClusters: (params) => http.get('/clusters', { params }),

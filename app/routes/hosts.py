@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, selectinload, joinedload
 from sqlalchemy import or_, func
 
 from app.database import get_db
-from app.models import Host, Cluster, HostClusterRelation
+from app.models import Host, Cluster, HostClusterRelation, Domain
 from app.routes.dashboard import invalidate_dashboard_cache
 from app.schemas import (
     HostCreate,
@@ -15,6 +15,17 @@ from app.schemas import (
 )
 
 router = APIRouter(prefix="/api/hosts", tags=["主机资产管理"])
+
+def remove_host_bindings(db: Session, host_ids: set[int]) -> None:
+    """Remove references to hosts before deleting them."""
+    db.query(HostClusterRelation).filter(HostClusterRelation.host_id.in_(host_ids)).delete(synchronize_session=False)
+    for domain in db.query(Domain).all():
+        current_ids = [int(part.strip()) for part in (domain.bound_host_ids or "").split(",") if part.strip().isdigit()]
+        remaining_ids = [host_id for host_id in current_ids if host_id not in host_ids]
+        if remaining_ids != current_ids:
+            domain.bound_host_ids = ",".join(map(str, remaining_ids))
+        if domain.bound_host_id in host_ids:
+            domain.bound_host_id = remaining_ids[0] if remaining_ids else None
 
 def format_host_response(host: Host) -> dict:
     clusters = []
@@ -59,6 +70,7 @@ def list_hosts(
     status: Optional[str] = Query(None, description="状态 online/offline/maintenance"),
     arch: Optional[str] = Query(None, description="架构 amd64/arm64 等"),
     cluster_id: Optional[int] = Query(None, description="所属集群ID"),
+    ids: Optional[str] = Query(None, description="指定主机 ID，逗号分隔"),
     keyword: Optional[str] = Query(None, description="精准搜索关键词(主机名/IP/端口/集群名)"),
     sort_by: Optional[str] = Query(None, description="排序字段"),
     order: Optional[str] = Query(None, description="排序方向: asc/desc 或 ascending/descending"),
@@ -76,6 +88,14 @@ def list_hosts(
         filters.append(Host.arch == arch)
     if cluster_id:
         filters.append(Host.cluster_relations.any(HostClusterRelation.cluster_id == cluster_id))
+    if ids is not None:
+        try:
+            selected_ids = [int(part.strip()) for part in ids.split(",") if part.strip()]
+        except ValueError:
+            raise HTTPException(status_code=400, detail="主机 ID 列表格式错误")
+        if not selected_ids:
+            raise HTTPException(status_code=400, detail="主机 ID 列表不能为空")
+        filters.append(Host.id.in_(selected_ids))
     
     # 2. 严格精准过滤搜索关键词
     raw_kw = keyword.strip() if keyword else ""
@@ -254,6 +274,7 @@ def delete_host(host_id: int, db: Session = Depends(get_db)):
     host = db.query(Host).filter(Host.id == host_id).first()
     if not host:
         raise HTTPException(status_code=404, detail="主机不存在")
+    remove_host_bindings(db, {host_id})
     db.delete(host)
     db.commit()
     invalidate_dashboard_cache()
@@ -263,7 +284,9 @@ def delete_host(host_id: int, db: Session = Depends(get_db)):
 def batch_delete_hosts(host_ids: List[int], db: Session = Depends(get_db)):
     if not host_ids:
         return {"deleted_count": 0}
-    count = db.query(Host).filter(Host.id.in_(host_ids)).delete(synchronize_session=False)
+    ids = set(host_ids)
+    remove_host_bindings(db, ids)
+    count = db.query(Host).filter(Host.id.in_(ids)).delete(synchronize_session=False)
     db.commit()
     invalidate_dashboard_cache()
     return {"message": f"成功批量删除 {count} 台主机", "deleted_count": count}

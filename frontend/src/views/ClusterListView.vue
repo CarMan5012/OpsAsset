@@ -4,9 +4,6 @@
       <!-- 顶部工具栏: 标题、搜索、多维过滤与视图模式切换 -->
       <div class="filter-bar">
         <div class="filter-group">
-          <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin-right: 8px; display: flex; align-items: center; gap: 6px;">
-            <Layers :size="16" style="color: #2563eb;" /> 服务与集群拓扑
-          </div>
           <el-input v-model="clusterFilter.keyword" placeholder="搜索服务与集群名称/描述" clearable
             @input="clusterPagination.page = 1" style="width: 220px;">
             <template #prefix><Search :size="14" style="color: #94a3b8;" /></template>
@@ -19,7 +16,7 @@
           </el-select>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 12px;">
+        <div class="filter-actions" style="display: flex; align-items: center; gap: 12px;">
           <!-- 双视图模式切换单选按钮组 -->
           <el-radio-group v-model="clusterViewMode" size="default" class="view-mode-btn-group" @change="onViewModeChange">
             <el-radio-button label="table">
@@ -65,10 +62,10 @@
           <el-table-column prop="cluster_type" label="类型 / 版本" min-width="180" sortable="custom">
             <template #default="{ row }">
               <div style="display: flex; align-items: center; gap: 6px; white-space: nowrap;">
-                <el-tag size="small" type="info" style="font-weight: 600; font-family: 'JetBrains Mono';">
+                <el-tag size="small" type="info" style="font-weight: 600; font-family: var(--font-data);">
                   {{ getClusterTypeLabel(row.cluster_type) }}
                 </el-tag>
-                <span v-if="row.version" style="font-size: 11.5px; font-family: 'JetBrains Mono'; color: #2563eb; background: #eff6ff; border: 1px solid #dbeafe; padding: 1.5px 6px; border-radius: 4px; font-weight: 600;">
+                <span v-if="row.version" style="font-size: 11.5px; font-family: var(--font-data); color: #2563eb; background: #eff6ff; border: 1px solid #dbeafe; padding: 1.5px 6px; border-radius: 4px; font-weight: 600;">
                   {{ row.version }}
                 </span>
                 <span v-else style="color: #94a3b8; font-size: 11px;">未填版本</span>
@@ -105,8 +102,8 @@
                 <div v-for="n in row.nodes.slice(0, 3)" :key="n.host_id"
                   style="font-size: 11.5px; background: #ffffff; padding: 3px 7px; border-radius: 4px; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.02);"
                   @click="openViewNodesDialog(row)" title="点击查看节点明细">
-                  <span style="color: #0f172a; font-weight: 600; font-family: 'JetBrains Mono', monospace;">{{ n.hostname }}</span>
-                  <span style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #2563eb; background: #eff6ff; padding: 0 4px; border-radius: 3px;">{{ n.private_ip }}</span>
+                  <span style="color: #0f172a; font-weight: 600; font-family: var(--font-data);">{{ n.hostname }}</span>
+                  <span style="font-family: var(--font-data); font-size: 10.5px; color: #2563eb; background: #eff6ff; padding: 0 4px; border-radius: 3px;">{{ n.private_ip }}</span>
                 </div>
                 <el-button v-if="row.nodes.length > 3" link type="primary" size="small" @click="openViewNodesDialog(row)" style="font-weight: 600; font-size: 11.5px; padding: 0 2px;">
                   +{{ row.nodes.length - 3 }}台
@@ -117,7 +114,7 @@
           </el-table-column>
           <el-table-column prop="updated_at" label="更新时间" width="120" align="center">
             <template #default="{ row }">
-              <span style="font-size: 11px; color: #64748b; font-family: 'JetBrains Mono';">
+              <span style="font-size: 11px; color: #64748b; font-family: var(--font-data);">
                 {{ formatDateTime(row.updated_at || row.created_at).slice(5, 16) }}
               </span>
             </template>
@@ -185,8 +182,8 @@
                   <div v-for="n in c.nodes.slice(0, 8)" :key="n.host_id"
                     style="font-size: 12px; background: #ffffff; padding: 4px 9px; border-radius: 6px; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.03);"
                     @click="openViewNodesDialog(c)" title="点击查看节点详细配置与网络信息">
-                    <span style="color: #0f172a; font-weight: 600; font-family: 'JetBrains Mono', monospace;">{{ n.hostname }}</span>
-                    <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #2563eb; background: #eff6ff; padding: 1px 5px; border-radius: 3px;">{{ n.private_ip }}</span>
+                    <span style="color: #0f172a; font-weight: 600; font-family: var(--font-data);">{{ n.hostname }}</span>
+                    <span style="font-family: var(--font-data); font-size: 11px; color: #2563eb; background: #eff6ff; padding: 1px 5px; border-radius: 3px;">{{ n.private_ip }}</span>
                     <span v-if="n.role && n.role !== '无'" class="role-badge"
                       :class="n.role.toLowerCase().includes('master') || n.role.toLowerCase().includes('primary') || n.role.includes('主') ? 'role-master' : 'role-worker'"
                       style="font-size: 10px; padding: 0 4px;">{{ n.role }}</span>
@@ -203,7 +200,7 @@
 
             <!-- 卡片底部操作栏 -->
             <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 12px; margin-top: 16px;">
-              <span style="font-size: 11px; color: #94a3b8; font-family: 'JetBrains Mono';">
+              <span style="font-size: 11px; color: #94a3b8; font-family: var(--font-data);">
                 更新于: {{ formatDateTime(c.updated_at || c.created_at) }}
               </span>
               <div style="display: flex; gap: 4px; align-items: center;">
@@ -243,9 +240,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Layers, Search, Table, LayoutGrid } from 'lucide-vue-next'
+import { Search, Table, LayoutGrid } from 'lucide-vue-next'
 import OpsApi from '../api'
 import {
   formatDateTime,
@@ -272,6 +269,7 @@ const onViewModeChange = (val) => {
 const clusterPagination = reactive({ page: 1, size: 12 })
 const clusterSort = reactive({ prop: 'id', order: 'ascending' })
 const clusterFilter = reactive({ keyword: '', env: '', cluster_type: '' })
+watch([() => clusterFilter.env, () => clusterFilter.cluster_type], () => { clusterPagination.page = 1 })
 
 const clusterFormDialogRef = ref(null)
 const bindHostModalRef = ref(null)
@@ -382,6 +380,9 @@ const filteredClusterList = computed(() => {
     })
   }
   return list
+})
+watch(() => filteredClusterList.value.length, (length) => {
+  clusterPagination.page = Math.min(clusterPagination.page, Math.max(1, Math.ceil(length / clusterPagination.size)))
 })
 
 // 分页切片
