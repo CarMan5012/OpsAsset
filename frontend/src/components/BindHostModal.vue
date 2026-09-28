@@ -111,7 +111,7 @@
         </div>
         <div>
           <el-button @click="visible = false">取消</el-button>
-          <el-button type="primary" :loading="saving" @click="saveClusterNodes">保存绑定关系</el-button>
+          <el-button type="primary" :loading="saving" :disabled="loading || loadFailed" @click="saveClusterNodes">保存绑定关系</el-button>
         </div>
       </div>
     </template>
@@ -121,6 +121,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { copyToClipboard } from '../utils/clipboard'
 import { Search } from 'lucide-vue-next'
 import OpsApi from '../api'
 import { formatStorageValue, formatStorageUnit } from '../utils'
@@ -137,6 +138,8 @@ const activeCluster = ref(null)
 const bindEnvFilter = ref('')
 const bindKeyword = ref('')
 const allHostsList = ref([])
+const loadFailed = ref(false)
+let loadRequestId = 0
 
 const getEnvLabel = (key) => {
   if (!props.metaConfig?.environments) return key
@@ -178,28 +181,40 @@ const selectedCount = computed(() => {
   return allHostsList.value.filter(h => h._selected).length
 })
 
-const copyText = (txt) => {
+const copyText = async (txt) => {
   if (!txt) return
-  navigator.clipboard.writeText(txt).then(() => {
+  if (await copyToClipboard(txt)) {
     ElMessage.success(`已复制: ${txt}`)
-  })
+  } else {
+    ElMessage.error('复制失败，请检查浏览器剪贴板权限')
+  }
 }
 
 const open = async (c) => {
+  const requestId = ++loadRequestId
   activeCluster.value = c
   bindEnvFilter.value = c.env || ''
   bindKeyword.value = ''
   visible.value = true
   loading.value = true
+  loadFailed.value = false
+  allHostsList.value = []
 
   try {
-    const res = await OpsApi.getHosts({ size: 500 })
+    const first = await OpsApi.getHosts({ page: 1, size: 500, sort_by: 'id', sort_order: 'asc' })
+    const hosts = [...(first.data?.items || [])]
+    const pages = Math.ceil((first.data?.total || 0) / 500)
+    for (let page = 2; page <= pages; page++) {
+      const res = await OpsApi.getHosts({ page, size: 500, sort_by: 'id', sort_order: 'asc' })
+      hosts.push(...(res.data?.items || []))
+    }
+    if (requestId !== loadRequestId) return
     const currentBoundMap = {}
     ;(c.nodes || []).forEach(n => {
       currentBoundMap[n.host_id] = n.role || ''
     })
 
-    const list = (res.data?.items || []).map(h => ({
+    const list = hosts.map(h => ({
       ...h,
       _selected: currentBoundMap[h.id] !== undefined,
       _role: currentBoundMap[h.id] !== undefined ? currentBoundMap[h.id] : (activeClusterRoles.value[0]?.key || '')
@@ -213,13 +228,17 @@ const open = async (c) => {
 
     allHostsList.value = list
   } catch (e) {
-    ElMessage.error('加载主机列表失败')
+    if (requestId === loadRequestId) {
+      loadFailed.value = true
+      ElMessage.error('加载主机列表失败，请重新打开后再保存')
+    }
   } finally {
-    loading.value = false
+    if (requestId === loadRequestId) loading.value = false
   }
 }
 
 const saveClusterNodes = async () => {
+  if (loading.value || loadFailed.value || !activeCluster.value) return
   const selectedNodes = allHostsList.value
     .filter(h => h._selected)
     .map(h => ({ host_id: h.id, role: h._role }))

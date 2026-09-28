@@ -345,6 +345,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { copyToClipboard } from '../utils/clipboard'
 import { Search, ChevronRight, Download } from 'lucide-vue-next'
 import OpsApi from '../api'
 import {
@@ -422,11 +423,13 @@ const getServiceVersionLabel = (c) => {
   return String(v).startsWith('v') || String(v).startsWith('V') ? String(v) : `v${v}`
 }
 
-const copyText = (txt) => {
+const copyText = async (txt) => {
   if (!txt) return
-  navigator.clipboard.writeText(txt).then(() => {
+  if (await copyToClipboard(txt)) {
     ElMessage.success(`已复制: ${txt}`)
-  })
+  } else {
+    ElMessage.error('复制失败，请检查浏览器剪贴板权限')
+  }
 }
 
 

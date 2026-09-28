@@ -215,7 +215,7 @@
             </div>
 
             <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-              <span v-if="d.public_ip" style="font-family: var(--font-data); font-size: 11px; color: #475569;" :title="'绑定IP: ' + d.public_ip">
+              <span v-if="d.public_ip" style="font-family: var(--font-data); font-size: 11px; color: #475569; cursor: pointer;" @click.stop="copyText(d.public_ip.split(/[,，;\s]+/)[0])" :title="'点击复制 IP: ' + d.public_ip.split(/[,，;\s]+/)[0]">
                 {{ d.public_ip.split(/[,，;\s]+/)[0] }}{{ d.public_ip.includes(',') ? ' 等' : '' }}
               </span>
               <el-tag v-if="d.resolve_status === 'matched'" type="success" size="small" effect="light" style="font-weight: 600;">
@@ -272,6 +272,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { copyToClipboard } from '../utils/clipboard'
 import { Server, Layers, Cpu, HardDrive, Network, Globe } from 'lucide-vue-next'
 import { getMiddlewareLogo, formatStorageValue, formatStorageUnit, formatStorageFull, getEnvLabel as getEnvLabelUtil } from '../utils'
 
@@ -379,13 +380,13 @@ const getEnvLabel = (key) => {
   return getEnvLabelUtil(key, props.metaConfig)
 }
 
-const copyText = (text) => {
+const copyText = async (text) => {
   if (!text) return
-  navigator.clipboard.writeText(text).then(() => {
+  if (await copyToClipboard(text)) {
     ElMessage.success(`已复制公网 IP: ${text}`)
-  }).catch(() => {
-    ElMessage.info(`公网 IP: ${text}`)
-  })
+  } else {
+    ElMessage.error('复制失败，请检查浏览器剪贴板权限')
+  }
 }
 
 const handleClusterClick = (c) => {

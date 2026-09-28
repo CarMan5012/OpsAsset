@@ -180,6 +180,27 @@ def create_host(host_in: HostCreate, db: Session = Depends(get_db)):
     if exist:
         raise HTTPException(status_code=400, detail=f"内网IP {host_in.private_ip} 已存在")
 
+    assignments = []
+    for item in host_in.clusters or []:
+        if isinstance(item, dict):
+            cluster_id = item.get("cluster_id") or item.get("host_id")
+            role = item.get("role") or "Worker"
+        else:
+            cluster_id = getattr(item, "cluster_id", getattr(item, "host_id", None))
+            role = getattr(item, "role", "Worker") or "Worker"
+        if not isinstance(cluster_id, int) or isinstance(cluster_id, bool) or cluster_id <= 0:
+            raise HTTPException(status_code=400, detail="集群 ID 格式错误")
+        if not isinstance(role, str) or len(role) > 50:
+            raise HTTPException(status_code=400, detail="节点角色格式错误")
+        assignments.append((cluster_id, role))
+    cluster_ids = [cluster_id for cluster_id, _ in assignments]
+    if len(cluster_ids) != len(set(cluster_ids)):
+        raise HTTPException(status_code=400, detail="集群 ID 不能重复")
+    found_ids = {cluster_id for (cluster_id,) in db.query(Cluster.id).filter(Cluster.id.in_(cluster_ids)).all()}
+    missing_ids = sorted(set(cluster_ids) - found_ids)
+    if missing_ids:
+        raise HTTPException(status_code=400, detail=f"集群 ID {missing_ids} 不存在")
+
     host = Host(
         hostname=host_in.hostname,
         private_ip=host_in.private_ip,
@@ -198,25 +219,8 @@ def create_host(host_in: HostCreate, db: Session = Depends(get_db)):
     db.add(host)
     db.flush()
 
-    # 处理关联集群 (安全兼容对象与字典结构)
-    if host_in.clusters:
-        for item in host_in.clusters:
-            if isinstance(item, dict):
-                target_cluster_id = item.get("cluster_id") or item.get("host_id")
-                role = item.get("role") or "Worker"
-            else:
-                target_cluster_id = getattr(item, "cluster_id", getattr(item, "host_id", None))
-                role = getattr(item, "role", "Worker") or "Worker"
-
-            if target_cluster_id:
-                cluster_exist = db.query(Cluster).filter(Cluster.id == target_cluster_id).first()
-                if cluster_exist:
-                    rel = HostClusterRelation(
-                        host_id=host.id,
-                        cluster_id=target_cluster_id,
-                        role=role
-                    )
-                    db.add(rel)
+    for cluster_id, role in assignments:
+        db.add(HostClusterRelation(host_id=host.id, cluster_id=cluster_id, role=role))
 
 
     db.commit()
@@ -249,14 +253,30 @@ def update_host(host_id: int, host_in: HostUpdate, db: Session = Depends(get_db)
     # 处理集群关联更新
     if "cluster_ids_with_roles" in update_data:
         cluster_list = update_data.pop("cluster_ids_with_roles")
+        assignments = []
+        for item in cluster_list or []:
+            cluster_id = item.get("cluster_id")
+            role = item.get("role") or "Worker"
+            if not isinstance(cluster_id, int) or isinstance(cluster_id, bool) or cluster_id <= 0:
+                raise HTTPException(status_code=400, detail="集群 ID 格式错误")
+            if not isinstance(role, str) or len(role) > 50:
+                raise HTTPException(status_code=400, detail="节点角色格式错误")
+            assignments.append((cluster_id, role))
+        cluster_ids = [cluster_id for cluster_id, _ in assignments]
+        if len(cluster_ids) != len(set(cluster_ids)):
+            raise HTTPException(status_code=400, detail="集群 ID 不能重复")
+        found_ids = {cluster_id for (cluster_id,) in db.query(Cluster.id).filter(Cluster.id.in_(cluster_ids)).all()}
+        missing_ids = sorted(set(cluster_ids) - found_ids)
+        if missing_ids:
+            raise HTTPException(status_code=400, detail=f"集群 ID {missing_ids} 不存在")
         # 清除现有关系
         db.query(HostClusterRelation).filter(HostClusterRelation.host_id == host.id).delete()
-        if cluster_list:
-            for c in cluster_list:
+        if assignments:
+            for cluster_id, role in assignments:
                 rel = HostClusterRelation(
                     host_id=host.id,
-                    cluster_id=c.get("cluster_id"),
-                    role=c.get("role", "Worker")
+                    cluster_id=cluster_id,
+                    role=role
                 )
                 db.add(rel)
 

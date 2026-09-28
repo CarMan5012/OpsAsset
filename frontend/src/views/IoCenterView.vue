@@ -335,7 +335,12 @@ const executeImport = async () => {
     formData.append('file', selectedFile.value)
     const res = await OpsApi.importAssets(formData, importOverwrite.value)
     importResult.value = res.data
-    ElMessage.success(`导入完成：新增 ${res.data.inserted_count} 台，更新 ${res.data.updated_count} 台`)
+    const summary = `新增 ${res.data.inserted_count} 台，更新 ${res.data.updated_count} 台`
+    if (res.data.error_count > 0) {
+      ElMessage.warning(`导入完成：${summary}，${res.data.error_count} 行失败，请查看下方原因`)
+    } else {
+      ElMessage.success(`导入完成：${summary}`)
+    }
     selectedFile.value = null
     if (fileInputRef.value) fileInputRef.value.value = ''
     emit('data-changed')

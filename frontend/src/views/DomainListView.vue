@@ -83,7 +83,7 @@
                   >
                     {{ isIpv6(ip) ? 'IPv6' : 'IPv4' }}
                   </span>
-                  <span class="ip-copy-value" style="font-family: var(--font-data); font-size: 12px; font-weight: 600; color: #1e293b;">
+                  <span class="ip-copy-value" style="font-family: var(--font-data); font-size: 12px; font-weight: 600; color: #1e293b; cursor: pointer;" @click.stop="copyText(ip)" title="点击复制 IP">
                     {{ ip }}
                   </span>
                   <Copy
@@ -115,7 +115,7 @@
                     >
                       {{ isIpv6(ip) ? 'IPv6' : 'IPv4' }}
                     </span>
-                    <span class="ip-copy-value" style="font-family: var(--font-data); font-size: 12px; color: #334155;">
+                    <span class="ip-copy-value" style="font-family: var(--font-data); font-size: 12px; color: #334155; cursor: pointer;" @click.stop="copyText(ip)" title="点击复制解析 IP">
                       {{ ip }}
                     </span>
                     <Copy
@@ -190,8 +190,8 @@
                     <span style="font-weight: 600; color: #0f172a; font-size: 12.5px;">{{ h.hostname }}</span>
                   </div>
                   <div style="font-family: var(--font-data); font-size: 11px; color: #64748b; margin-top: 1px;">
-                    内网: <span style="color: #334155; font-weight: 600;">{{ h.private_ip }}</span>
-                    <span v-if="h.public_ip" style="color: #2563eb; margin-left: 6px;">公网: {{ h.public_ip }}</span>
+                    内网: <span style="color: #334155; font-weight: 600; cursor: pointer;" @click.stop="copyText(h.private_ip)" title="点击复制内网 IP">{{ h.private_ip }}</span>
+                    <span v-if="h.public_ip" style="color: #2563eb; margin-left: 6px; cursor: pointer;" @click.stop="copyText(h.public_ip)" title="点击复制公网 IP">公网: {{ h.public_ip }}</span>
                   </div>
                 </div>
               </div>
@@ -276,6 +276,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { copyToClipboard } from '../utils/clipboard'
 import { Globe, Search, RefreshCw, ExternalLink, Copy, Server } from 'lucide-vue-next'
 import OpsApi from '../api'
 import DomainFormDialog from '../components/DomainFormDialog.vue'
@@ -313,13 +314,13 @@ const getEnvLabel = (envKey) => {
   return found ? found.label : envKey
 }
 
-const copyText = (text) => {
+const copyText = async (text) => {
   if (!text) return
-  navigator.clipboard.writeText(text).then(() => {
+  if (await copyToClipboard(text)) {
     ElMessage.success({ message: `已复制: ${text}`, duration: 1500 })
-  }).catch(() => {
-    ElMessage.error('复制失败')
-  })
+  } else {
+    ElMessage.error('复制失败，请检查浏览器剪贴板权限')
+  }
 }
 
 const parseIps = (ipStr) => {

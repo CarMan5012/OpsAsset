@@ -106,7 +106,7 @@ def handle_export_assets(
     )
 
     # 1. 指定 ID 优先过滤 (用于在表格中勾选导出选中的主机)
-    if ids and ids.strip():
+    if ids is not None:
         try:
             id_list = [int(i.strip()) for i in ids.split(",") if i.strip()]
             if not id_list:

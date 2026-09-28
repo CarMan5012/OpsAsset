@@ -193,6 +193,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { copyToClipboard } from '../utils/clipboard'
 import { DoorOpen, Server, Cpu, Database, HardDrive, Search } from 'lucide-vue-next'
 import {
   getMiddlewareLogo,
@@ -282,11 +283,13 @@ const filteredViewNodes = computed(() => {
   })
 })
 
-const copyText = (txt) => {
+const copyText = async (txt) => {
   if (!txt) return
-  navigator.clipboard.writeText(txt).then(() => {
+  if (await copyToClipboard(txt)) {
     ElMessage.success(`已复制: ${txt}`)
-  })
+  } else {
+    ElMessage.error('复制失败，请检查浏览器剪贴板权限')
+  }
 }
 
 const open = (cluster) => {

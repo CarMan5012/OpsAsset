@@ -589,6 +589,7 @@ def test_excel_styling_features():
 def test_invalid_export_ids_do_not_export_all_hosts():
     response = client.get("/api/assets/export", params={"ids": "not-a-host-id"})
     assert response.status_code == 400
+    assert client.get("/api/assets/export", params={"ids": ""}).status_code == 400
 
 
 def test_host_ids_filter_returns_only_selected_hosts():
@@ -631,6 +632,70 @@ def test_binding_missing_host_keeps_existing_nodes():
     finally:
         client.delete(f"/api/clusters/{cluster_id}")
         client.delete(f"/api/hosts/{host_id}")
+
+
+def test_update_host_rejects_invalid_cluster_bindings_without_losing_existing():
+    host = client.post("/api/hosts", json={"hostname": "host-binding-check", "private_ip": "10.250.22.1"}).json()
+    cluster = client.post("/api/clusters", json={"name": "host-binding-cluster", "cluster_type": "Redis"}).json()
+    host_id, cluster_id = host["id"], cluster["id"]
+    try:
+        assert client.put(f"/api/hosts/{host_id}", json={"cluster_ids_with_roles": [{"cluster_id": cluster_id}]}).status_code == 200
+        for invalid in ([{"cluster_id": 99999999}], [{"cluster_id": cluster_id}, {"cluster_id": cluster_id}], [{"cluster_id": None}]):
+            response = client.put(f"/api/hosts/{host_id}", json={"cluster_ids_with_roles": invalid})
+            assert response.status_code == 400
+            assert [item["cluster_id"] for item in client.get(f"/api/hosts/{host_id}").json()["clusters"]] == [cluster_id]
+    finally:
+        client.delete(f"/api/clusters/{cluster_id}")
+        client.delete(f"/api/hosts/{host_id}")
+
+
+def test_create_host_rejects_missing_or_duplicate_cluster_bindings():
+    cluster = client.post("/api/clusters", json={"name": "create-host-cluster", "cluster_type": "Redis"}).json()
+    try:
+        for ip, assignments in (
+            ("10.250.25.1", [{"cluster_id": 99999999}]),
+            ("10.250.25.2", [{"cluster_id": cluster["id"]}, {"cluster_id": cluster["id"]}]),
+        ):
+            response = client.post("/api/hosts", json={"hostname": "invalid-binding", "private_ip": ip, "clusters": assignments})
+            assert response.status_code == 400
+            assert client.get("/api/hosts", params={"keyword": ip}).json()["total"] == 0
+    finally:
+        client.delete(f"/api/clusters/{cluster['id']}")
+
+
+def test_cluster_distribution_counts_overlapping_role_once():
+    host = client.post("/api/hosts", json={"hostname": "role-count-host", "private_ip": "10.250.24.1"}).json()
+    cluster = client.post("/api/clusters", json={"name": "role-count-cluster", "cluster_type": "K8s"}).json()
+    try:
+        response = client.post(f"/api/clusters/{cluster['id']}/bind-hosts", json={"nodes": [{"host_id": host["id"], "role": "master-node"}]})
+        assert response.status_code == 200
+        distribution = client.get("/api/dashboard/cluster-distribution").json()
+        item = next(item for item in distribution if item["cluster_id"] == cluster["id"])
+        assert (item["node_count"], item["master_count"], item["worker_count"], item["other_count"]) == (1, 1, 0, 0)
+    finally:
+        client.delete(f"/api/clusters/{cluster['id']}")
+        client.delete(f"/api/hosts/{host['id']}")
+
+
+def test_import_reports_invalid_required_values_instead_of_defaulting_them():
+    rows = pd.DataFrame({
+        COL_HOSTNAME: ["valid-import", "missing-cpu", "bad-memory", ""],
+        COL_PRIVATE_IP: ["10.250.23.1", "10.250.23.2", "10.250.23.3", "10.250.23.4"],
+        COL_CPU: [4, None, 4, 4],
+        COL_MEMORY: [8, 8, "invalid", 8],
+        COL_DISK: [100, 100, 100, 100],
+        COL_ENV: ["test"] * 4,
+        COL_STATUS: ["online"] * 4,
+    })
+    response = client.post("/api/assets/import", files={"file": ("invalid_rows.csv", rows.to_csv(index=False).encode(), "text/csv")})
+    assert response.status_code == 200
+    result = response.json()
+    assert result["inserted_count"] == 1
+    assert result["error_count"] == 3
+    assert {item["row"] for item in result["errors"]} == {3, 4, 5}
+    assert client.get("/api/hosts", params={"keyword": "10.250.23."}).json()["total"] == 1
+    imported_host = client.get("/api/hosts", params={"keyword": "10.250.23.1"}).json()["items"][0]
+    client.delete(f"/api/hosts/{imported_host['id']}")
 
 
 def test_update_domain_normalizes_name(monkeypatch):

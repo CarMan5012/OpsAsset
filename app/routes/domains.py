@@ -274,6 +274,7 @@ def create_domain(domain_in: DomainCreate, db: Session = Depends(get_db)):
     host_ids = domain_in.bound_host_ids or []
     if not host_ids and domain_in.bound_host_id:
         host_ids = [domain_in.bound_host_id]
+    host_ids = list(dict.fromkeys(host_ids))
     
     primary_host_id = host_ids[0] if host_ids else None
     bound_host_ids_str = ",".join(str(i) for i in host_ids)
@@ -336,7 +337,7 @@ def update_domain(domain_id: int, domain_in: DomainUpdate, db: Session = Depends
             raise HTTPException(status_code=400, detail=f"域名 {update_data['domain_name']} 已存在")
 
     if "bound_host_ids" in update_data and update_data["bound_host_ids"] is not None:
-        host_ids = update_data["bound_host_ids"]
+        host_ids = list(dict.fromkeys(update_data["bound_host_ids"]))
         found_ids = {h.id for h in db.query(Host.id).filter(Host.id.in_(host_ids)).all()}
         missing = [i for i in host_ids if i not in found_ids]
         if missing:

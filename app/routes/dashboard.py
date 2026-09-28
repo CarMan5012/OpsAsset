@@ -193,8 +193,14 @@ def get_cluster_distribution(db: Session = Depends(get_db)):
     result = []
     for c in clusters:
         rels = rels_by_cluster.get(c.id, [])
-        master_count = sum(1 for r in rels if any(k in (r.role or "").lower() for k in ["master", "leader", "primary", "主"]))
-        worker_count = sum(1 for r in rels if any(k in (r.role or "").lower() for k in ["worker", "slave", "follower", "broker", "node", "从", "工作"]))
+        master_count = 0
+        worker_count = 0
+        for rel in rels:
+            role = (rel.role or "").lower()
+            if any(key in role for key in ("master", "leader", "primary", "主")):
+                master_count += 1
+            elif any(key in role for key in ("worker", "slave", "follower", "broker", "node", "从", "工作")):
+                worker_count += 1
         other_count = len(rels) - master_count - worker_count
 
         pub_ips = set()

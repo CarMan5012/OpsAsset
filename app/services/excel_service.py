@@ -1,6 +1,7 @@
 import io
 import re
 import ipaddress
+import math
 from datetime import datetime
 import pandas as pd
 from typing import Tuple, List, Dict, Any, Optional
@@ -69,6 +70,19 @@ def normalize_float(val: Any, default: float = 0.0) -> float:
         return float(str(val).strip())
     except (ValueError, TypeError):
         return default
+
+def parse_required_number(val: Any, label: str, integer: bool = False) -> int | float:
+    if val is None or pd.isna(val) or not str(val).strip():
+        raise ValueError(f"{label}不能为空")
+    try:
+        number = float(str(val).strip())
+    except (ValueError, TypeError):
+        raise ValueError(f"{label}必须是数字") from None
+    if not math.isfinite(number) or number < 0:
+        raise ValueError(f"{label}不能为负数或无效数值")
+    if integer and not number.is_integer():
+        raise ValueError(f"{label}必须是整数")
+    return int(number) if integer else number
 
 def normalize_arch(val: Any) -> str:
     if not val:
@@ -382,7 +396,9 @@ def parse_and_import(
         # 解析字段
         try:
             h_name = get_val(row, "hostname")
-            hostname = str(h_name).strip() if h_name is not None and str(h_name).lower() != "nan" else f"host-{raw_ip.replace('.', '-')}"
+            hostname = str(h_name).strip() if h_name is not None and not pd.isna(h_name) else ""
+            if not hostname:
+                raise ValueError("主机名不能为空")
 
             pub_ip = get_val(row, "public_ip")
             public_ip = str(pub_ip).strip() if pub_ip is not None and str(pub_ip).lower() != "nan" else ""
@@ -390,9 +406,9 @@ def parse_and_import(
             ports_raw = get_val(row, "open_ports")
             open_ports = str(ports_raw).strip() if ports_raw is not None and str(ports_raw).lower() != "nan" else ""
 
-            cpu_cores = normalize_int(get_val(row, "cpu_cores"), default=0)
-            memory_gb = normalize_float(get_val(row, "memory_gb"), default=0.0)
-            disk_gb = normalize_float(get_val(row, "disk_gb"), default=0.0)
+            cpu_cores = parse_required_number(get_val(row, "cpu_cores"), "CPU核数", integer=True)
+            memory_gb = parse_required_number(get_val(row, "memory_gb"), "内存")
+            disk_gb = parse_required_number(get_val(row, "disk_gb"), "数据盘")
 
             arch_val = normalize_arch(get_val(row, "arch"))
 
@@ -402,8 +418,14 @@ def parse_and_import(
             kernel_raw = get_val(row, "kernel_version")
             kernel_val = str(kernel_raw).strip() if kernel_raw is not None and str(kernel_raw).lower() != "nan" else ""
 
-            env_val = normalize_env(get_val(row, "env"))
-            status_val = normalize_status(get_val(row, "status"))
+            env_raw = get_val(row, "env")
+            status_raw = get_val(row, "status")
+            if env_raw is None or pd.isna(env_raw) or not str(env_raw).strip():
+                raise ValueError("环境不能为空")
+            if status_raw is None or pd.isna(status_raw) or not str(status_raw).strip():
+                raise ValueError("状态不能为空")
+            env_val = normalize_env(env_raw)
+            status_val = normalize_status(status_raw)
 
             notes_raw = get_val(row, "notes")
             notes_val = str(notes_raw).strip() if notes_raw is not None and str(notes_raw).lower() != "nan" else ""

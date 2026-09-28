@@ -103,7 +103,7 @@
                   style="font-size: 11.5px; background: #ffffff; padding: 3px 7px; border-radius: 4px; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.02);"
                   @click="openViewNodesDialog(row)" title="点击查看节点明细">
                   <span style="color: #0f172a; font-weight: 600; font-family: var(--font-data);">{{ n.hostname }}</span>
-                  <span style="font-family: var(--font-data); font-size: 10.5px; color: #2563eb; background: #eff6ff; padding: 0 4px; border-radius: 3px;">{{ n.private_ip }}</span>
+                  <span style="font-family: var(--font-data); font-size: 10.5px; color: #2563eb; background: #eff6ff; padding: 0 4px; border-radius: 3px; cursor: pointer;" @click.stop="copyText(n.private_ip)" title="点击复制 IP">{{ n.private_ip }}</span>
                 </div>
                 <el-button v-if="row.nodes.length > 3" link type="primary" size="small" @click="openViewNodesDialog(row)" style="font-weight: 600; font-size: 11.5px; padding: 0 2px;">
                   +{{ row.nodes.length - 3 }}台
@@ -183,7 +183,7 @@
                     style="font-size: 12px; background: #ffffff; padding: 4px 9px; border-radius: 6px; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.03);"
                     @click="openViewNodesDialog(c)" title="点击查看节点详细配置与网络信息">
                     <span style="color: #0f172a; font-weight: 600; font-family: var(--font-data);">{{ n.hostname }}</span>
-                    <span style="font-family: var(--font-data); font-size: 11px; color: #2563eb; background: #eff6ff; padding: 1px 5px; border-radius: 3px;">{{ n.private_ip }}</span>
+                    <span style="font-family: var(--font-data); font-size: 11px; color: #2563eb; background: #eff6ff; padding: 1px 5px; border-radius: 3px; cursor: pointer;" @click.stop="copyText(n.private_ip)" title="点击复制 IP">{{ n.private_ip }}</span>
                     <span v-if="n.role && n.role !== '无'" class="role-badge"
                       :class="n.role.toLowerCase().includes('master') || n.role.toLowerCase().includes('primary') || n.role.includes('主') ? 'role-master' : 'role-worker'"
                       style="font-size: 10px; padding: 0 4px;">{{ n.role }}</span>
@@ -242,6 +242,7 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { copyToClipboard } from '../utils/clipboard'
 import { Search, Table, LayoutGrid } from 'lucide-vue-next'
 import OpsApi from '../api'
 import {
@@ -287,11 +288,13 @@ const getClusterTypeLabel = (key) => {
   return item ? item.label : key
 }
 
-const copyText = (txt) => {
+const copyText = async (txt) => {
   if (!txt) return
-  navigator.clipboard.writeText(txt).then(() => {
+  if (await copyToClipboard(txt)) {
     ElMessage.success(`已复制: ${txt}`)
-  })
+  } else {
+    ElMessage.error('复制失败，请检查浏览器剪贴板权限')
+  }
 }
 
 // 快捷分类胶囊列表
@@ -448,4 +451,3 @@ defineExpose({
   filterByClusterId
 })
 </script>
-
