@@ -4,10 +4,9 @@
       <!-- 顶部筛选过滤工具栏 -->
       <div class="filter-bar host-filter-bar" :class="{ 'show-advanced': showAdvancedFilters }">
         <div class="filter-group">
-          <el-input v-model="hostFilter.keyword" placeholder="搜索主机名/IP/系统/备注" clearable
-            @input="handleSearchInput" @clear="handleSearchInput" @keyup.enter="handleFilterChange" style="width: 230px;">
-            <template #prefix><Search :size="14" style="color: #94a3b8;" /></template>
-          </el-input>
+          <el-input v-model="hostFilter.keyword" type="textarea" class="host-keyword-search"
+            :autosize="{ minRows: 1, maxRows: 4 }" placeholder="搜索主机名/IP；可粘贴多行或用逗号分隔"
+            @input="handleSearchInput" style="width: 270px;" />
           <el-button class="mobile-filter-toggle" @click="showAdvancedFilters = !showAdvancedFilters">
             {{ showAdvancedFilters ? '收起筛选' : '更多筛选' }}
           </el-button>
@@ -339,6 +338,7 @@
 
     <!-- 资产导出与实时预览弹窗 -->
     <HostExportDialog ref="hostExportDialogRef" :meta-config="metaConfig" />
+
   </section>
 </template>
 
@@ -346,7 +346,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { copyToClipboard } from '../utils/clipboard'
-import { Search, ChevronRight, Download } from 'lucide-vue-next'
+import { ChevronRight, Download } from 'lucide-vue-next'
 import OpsApi from '../api'
 import {
   formatDateTime,
@@ -379,7 +379,6 @@ const showAdvancedFilters = ref(false)
 const hostFormDialogRef = ref(null)
 const hostExportDialogRef = ref(null)
 const selectedHostIds = ref([])
-
 const openExportDialog = () => {
   hostExportDialogRef.value?.open({
     filters: hostFilter,
@@ -512,11 +511,13 @@ const handleSizeChange = (val) => {
 }
 
 const handleFilterChange = () => {
+  if (searchTimer) clearTimeout(searchTimer)
   hostsData.page = 1
   fetchHosts()
 }
 
 const resetHostFilter = () => {
+  if (searchTimer) clearTimeout(searchTimer)
   Object.assign(hostFilter, {
     keyword: '',
     env: '',
@@ -531,8 +532,18 @@ const resetHostFilter = () => {
 }
 
 let searchTimer = null
+let searchLimitNotified = false
 const handleSearchInput = () => {
   if (searchTimer) clearTimeout(searchTimer)
+  const termCount = new Set(hostFilter.keyword.split(/[,，;；\s]+/).filter(Boolean)).size
+  if (termCount > 100) {
+    if (!searchLimitNotified) ElMessage.warning('一次最多搜索 100 个关键词')
+    searchLimitNotified = true
+    hostsData.items = []
+    hostsData.total = 0
+    return
+  }
+  searchLimitNotified = false
   searchTimer = setTimeout(() => {
     hostsData.page = 1
     fetchHosts(true)
@@ -564,7 +575,7 @@ const fetchHosts = async (silent = false) => {
     hostsData.items = res.data.items || []
     return true
   } catch (e) {
-    if (!silent) ElMessage.error('获取主机列表失败')
+    if (!silent) ElMessage.error(e.response?.data?.detail || '获取主机列表失败')
     return false
   } finally {
     loading.value = false

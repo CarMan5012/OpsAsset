@@ -4,6 +4,7 @@ const http = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 30000
 })
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
 
 export const OpsApi = {
   // 仪表盘
@@ -37,8 +38,9 @@ export const OpsApi = {
       }
     })
     const query = new URLSearchParams(cleanParams).toString()
-    return query ? `/api/assets/export?${query}` : '/api/assets/export'
+    return query ? `${apiBaseUrl}/assets/export?${query}` : `${apiBaseUrl}/assets/export`
   },
+  getTemplateUrl: () => `${apiBaseUrl}/assets/template`,
   downloadTemplateBlob: () => http.get('/assets/template', { responseType: 'blob' }),
   exportAssetsBlob: (params = {}) => {
     const cleanParams = {}

@@ -103,4 +103,3 @@ class Domain(Base):
 
     # 关联主机
     host = relationship("Host", foreign_keys=[bound_host_id])
-

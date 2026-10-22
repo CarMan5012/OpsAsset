@@ -3,7 +3,6 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_
 
 from app.database import get_db
 from app.models import Host, Cluster, HostClusterRelation
@@ -13,6 +12,7 @@ from app.services.excel_service import (
     parse_and_import,
     export_hosts_data
 )
+from app.services.host_search import host_keyword_filter
 
 router = APIRouter(prefix="/api/assets", tags=["资产导入导出"])
 io_alias_router = APIRouter(prefix="/api/io", tags=["资产导入导出别名"])
@@ -46,17 +46,19 @@ async def handle_import_assets(
     db: Session
 ):
     """上传 Excel 或 CSV 文件批量导入资产"""
-    if not file.filename.endswith((".xlsx", ".xls", ".csv")):
+    if not file.filename or not file.filename.lower().endswith((".xlsx", ".xls", ".csv")):
         raise HTTPException(status_code=400, detail="仅支持上传 .xlsx, .xls 或 .csv 格式的文件")
 
-    contents = await file.read()
+    contents = await file.read(10 * 1024 * 1024 + 1)
     if len(contents) == 0:
         raise HTTPException(status_code=400, detail="上传的文件内容为空")
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="上传文件不能超过 10 MB")
 
     try:
         result = parse_and_import(
             file_bytes=contents,
-            filename=file.filename,
+            filename=file.filename.lower(),
             db=db,
             overwrite=overwrite
         )
@@ -124,25 +126,12 @@ def handle_export_assets(
         if cluster_id:
             query = query.filter(Host.cluster_relations.any(HostClusterRelation.cluster_id == cluster_id))
         
-        raw_kw = keyword.strip() if keyword else ""
-        if raw_kw:
-            query = query.filter(
-                or_(
-                    Host.hostname.ilike(f"%{raw_kw}%"),
-                    Host.private_ip.ilike(f"%{raw_kw}%"),
-                    Host.public_ip.ilike(f"%{raw_kw}%"),
-                    Host.os.ilike(f"%{raw_kw}%"),
-                    Host.notes.ilike(f"%{raw_kw}%"),
-                    Host.cluster_relations.any(
-                        HostClusterRelation.cluster.has(
-                            or_(
-                                Cluster.name.ilike(f"%{raw_kw}%"),
-                                Cluster.cluster_type.ilike(f"%{raw_kw}%")
-                            )
-                        )
-                    )
-                )
-            )
+        try:
+            keyword_condition = host_keyword_filter(keyword or "")
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if keyword_condition is not None:
+            query = query.filter(keyword_condition)
 
     # 4. 动态排序映射与规范化 (默认按添加时间正序升序)
     real_order = (sort_order or order or "asc").lower().strip()
@@ -215,7 +204,7 @@ def export_assets(
     columns: Optional[str] = Query(None, description="自定义导出列(逗号分隔，如: hostname,private_ip,env,status)"),
     ids: Optional[str] = Query(None, description="按指定主机ID列表导出(逗号分隔)"),
     sort_by: Optional[str] = Query("id", description="排序字段"),
-    sort_order: Optional[str] = Query("desc", description="排序方向: asc/desc"),
+    sort_order: Optional[str] = Query(None, description="排序方向: asc/desc"),
     order: Optional[str] = Query(None, description="排序方向兼容参数"),
     db: Session = Depends(get_db)
 ):
@@ -232,7 +221,7 @@ def io_export_assets(
     columns: Optional[str] = Query(None, description="自定义导出列(逗号分隔，如: hostname,private_ip,env,status)"),
     ids: Optional[str] = Query(None, description="按指定主机ID列表导出(逗号分隔)"),
     sort_by: Optional[str] = Query("id", description="排序字段"),
-    sort_order: Optional[str] = Query("desc", description="排序方向: asc/desc"),
+    sort_order: Optional[str] = Query(None, description="排序方向: asc/desc"),
     order: Optional[str] = Query(None, description="排序方向兼容参数"),
     db: Session = Depends(get_db)
 ):

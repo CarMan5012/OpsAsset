@@ -2,11 +2,12 @@ from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, selectinload, joinedload
-from sqlalchemy import or_, func
+from sqlalchemy import func
 
 from app.database import get_db
 from app.models import Host, Cluster, HostClusterRelation, Domain
 from app.routes.dashboard import invalidate_dashboard_cache
+from app.services.host_search import host_keyword_filter
 from app.schemas import (
     HostCreate,
     HostUpdate,
@@ -98,26 +99,12 @@ def list_hosts(
         filters.append(Host.id.in_(selected_ids))
     
     # 2. 严格精准过滤搜索关键词
-    raw_kw = keyword.strip() if keyword else ""
-    if raw_kw:
-        filters.append(
-            or_(
-                Host.hostname.ilike(f"%{raw_kw}%"),
-                Host.private_ip.ilike(f"%{raw_kw}%"),
-                Host.public_ip.ilike(f"%{raw_kw}%"),
-                Host.open_ports.ilike(f"%{raw_kw}%"),
-                Host.os.ilike(f"%{raw_kw}%"),
-                Host.notes.ilike(f"%{raw_kw}%"),
-                Host.cluster_relations.any(
-                    HostClusterRelation.cluster.has(
-                        or_(
-                            Cluster.name.ilike(f"%{raw_kw}%"),
-                            Cluster.cluster_type.ilike(f"%{raw_kw}%")
-                        )
-                    )
-                )
-            )
-        )
+    try:
+        keyword_condition = host_keyword_filter(keyword or "")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if keyword_condition is not None:
+        filters.append(keyword_condition)
 
     # 3. 极速轻量 Count 查询
     count_query = db.query(func.count(Host.id))

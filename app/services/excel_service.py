@@ -2,6 +2,7 @@ import io
 import re
 import ipaddress
 import math
+import unicodedata
 from datetime import datetime
 import pandas as pd
 from typing import Tuple, List, Dict, Any, Optional
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.filters import FilterColumn
 
 from app.models import Host, Cluster, HostClusterRelation
 from app.schemas import ImportResultResponse, ImportErrorItem
@@ -732,97 +734,55 @@ def export_hosts_data(
         content_type = "text/csv; charset=utf-8-sig"
         extension = "csv"
     else:
-        # Excel 格式化美化导出 (科技石板深蓝大厂高颜值方案)
+        # Excel 资产清单采用与报表预览一致的居中网格样式。
         wb = Workbook()
         ws = wb.active
         ws.title = "主机资产清单"
 
-        # 1. 科技石板深蓝 (Slate-800) 表头样式 (精致紧凑版)
-        header_font = Font(name="Microsoft YaHei", size=10, bold=True, color="FFFFFF")
-        header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
-        header_border = Border(
-            left=Side(style="thin", color="334155"),
-            right=Side(style="thin", color="334155"),
-            top=Side(style="thin", color="334155"),
-            bottom=Side(style="medium", color="0EA5E9") # 底边青蓝强调线
-        )
-        thin_border = Border(
-            left=Side(style="thin", color="E2E8F0"),
-            right=Side(style="thin", color="E2E8F0"),
-            top=Side(style="thin", color="E2E8F0"),
-            bottom=Side(style="thin", color="E2E8F0")
-        )
-        alt_fill = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
+        header_font = Font(name="DengXian", size=10.5, bold=True, color="18304B")
+        header_fill = PatternFill(start_color="E9EEF3", end_color="E9EEF3", fill_type="solid")
+        header_side = Side(style="thin", color="C9D1D9")
+        header_border = Border(left=header_side, right=header_side, top=header_side, bottom=header_side)
+        grid_side = Side(style="thin", color="424A53")
+        grid_border = Border(left=grid_side, right=grid_side, top=grid_side, bottom=grid_side)
+        alt_fill = PatternFill(start_color="F5F7F9", end_color="F5F7F9", fill_type="solid")
         white_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
 
         export_headers = list(df.columns) if not df.empty else headers
         ws.append(export_headers)
-        ws.row_dimensions[1].height = 22
+        ws.row_dimensions[1].height = 27
+        center_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
         for col_idx in range(1, len(export_headers) + 1):
             cell = ws.cell(row=1, column=col_idx)
             cell.font = header_font
             cell.fill = header_fill
-            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.alignment = center_align
             cell.border = header_border
 
-        # 2. 数据字体与对齐规范 (精致小巧版)
-        data_font = Font(name="Microsoft YaHei", size=9.5, color="0F172A")
-        index_font = Font(name="Microsoft YaHei", size=9.5, color="64748B", bold=True)
-        ip_font = Font(name="Consolas", size=9.5, color="2563EB", bold=True)
-        center_align = Alignment(horizontal="center", vertical="center")
-        left_align = Alignment(horizontal="left", vertical="center")
-
-        # 状态徽章色彩映射 (9.5pt)
-        status_styles = {
-            "在线": (PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="15803D", bold=True)),
-            "online": (PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="15803D", bold=True)),
-            "维护中": (PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="B45309", bold=True)),
-            "maintenance": (PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="B45309", bold=True)),
-            "下线": (PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="B91C1C", bold=True)),
-            "offline": (PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="B91C1C", bold=True)),
-            "告警": (PatternFill(start_color="FFEDD5", end_color="FFEDD5", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="C2410C", bold=True)),
-            "故障": (PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="B91C1C", bold=True)),
-        }
-
-        # 环境徽章色彩映射 (9.5pt)
-        env_styles = {
-            "生产环境": (PatternFill(start_color="DBEAFE", end_color="DBEAFE", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="1D4ED8", bold=True)),
-            "生产": (PatternFill(start_color="DBEAFE", end_color="DBEAFE", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="1D4ED8", bold=True)),
-            "prod": (PatternFill(start_color="DBEAFE", end_color="DBEAFE", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="1D4ED8", bold=True)),
-            "测试环境": (PatternFill(start_color="F3E8FF", end_color="F3E8FF", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="7E22CE", bold=True)),
-            "测试": (PatternFill(start_color="F3E8FF", end_color="F3E8FF", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="7E22CE", bold=True)),
-            "test": (PatternFill(start_color="F3E8FF", end_color="F3E8FF", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="7E22CE", bold=True)),
-            "开发环境": (PatternFill(start_color="E0F2FE", end_color="E0F2FE", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="0369A1", bold=True)),
-            "开发": (PatternFill(start_color="E0F2FE", end_color="E0F2FE", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="0369A1", bold=True)),
-            "dev": (PatternFill(start_color="E0F2FE", end_color="E0F2FE", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="0369A1", bold=True)),
-            "预发布环境": (PatternFill(start_color="FCE7F3", end_color="FCE7F3", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="BE185D", bold=True)),
-            "预发布": (PatternFill(start_color="FCE7F3", end_color="FCE7F3", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="BE185D", bold=True)),
-            "stage": (PatternFill(start_color="FCE7F3", end_color="FCE7F3", fill_type="solid"), Font(name="Microsoft YaHei", size=9.5, color="BE185D", bold=True)),
-        }
-
-        center_cols = {"序号", "环境", "状态", "CPU", "内存", "数据盘", "架构", "内核版本", "添加时间", "修改时间"}
+        data_font = Font(name="DengXian", size=10, color="19324E")
+        index_font = Font(name="DengXian", size=9.5, color="8197AC")
+        ip_font = Font(name="DengXian", size=10, color="315875")
 
         for row_idx, row in df.iterrows():
             row_data = list(row.values)
             ws.append(row_data)
             current_row = ws.max_row
-            ws.row_dimensions[current_row].height = 20
+            ws.row_dimensions[current_row].height = 34
             is_alt = (row_idx % 2 == 1)
 
             for col_idx in range(1, len(row_data) + 1):
                 cell = ws.cell(row=current_row, column=col_idx)
                 cell.font = data_font
-                cell.border = thin_border
+                cell.border = grid_border
                 cell.fill = alt_fill if is_alt else white_fill
 
                 col_name = export_headers[col_idx - 1]
                 val_str = str(cell.value or "").strip()
+                if col_name in {"内网IP", "外网IP", "开放端口"}:
+                    cell.number_format = "@"
 
-                if col_name in center_cols:
-                    cell.alignment = center_align
-                else:
-                    cell.alignment = left_align
+                cell.alignment = center_align
 
                 # 序号列样式
                 if col_name == "序号":
@@ -832,17 +792,6 @@ def export_hosts_data(
                 elif col_name in ["内网IP", "外网IP"] and val_str and val_str != "-":
                     cell.font = ip_font
 
-                # 状态彩色徽章
-                elif col_name == "状态" and val_str in status_styles:
-                    s_fill, s_font = status_styles[val_str]
-                    cell.fill = s_fill
-                    cell.font = s_font
-
-                # 环境彩色徽章
-                elif col_name == "环境" and val_str in env_styles:
-                    e_fill, e_font = env_styles[val_str]
-                    cell.fill = e_fill
-                    cell.font = e_font
 
         # 3. 智能跨行合并连续相同的外网IP单元格 (支持多台主机共享同一外网IP的合并展示)
         if "外网IP" in export_headers:
@@ -870,53 +819,56 @@ def export_hosts_data(
                     )
                     # 重新应用边框和垂直居中对齐，确保合并单元格样式美观完整
                     for r in range(start_r, end_r + 1):
-                        ws.cell(row=r, column=pub_col_idx).border = thin_border
-                    ws.cell(row=start_r, column=pub_col_idx).alignment = Alignment(horizontal="left", vertical="center")
+                        ws.cell(row=r, column=pub_col_idx).border = grid_border
+                    ws.cell(row=start_r, column=pub_col_idx).alignment = center_align
                     start_r = end_r + 1
                 else:
                     start_r += 1
 
-        # 4. 智能计算紧凑列宽 (兼顾内容宽度与适度留白，拒绝过宽臃肿)
-        min_col_widths = {
-            "序号": 6,
-            "环境": 9,
-            "状态": 9,
-            "CPU": 7,
-            "内存": 9,
-            "数据盘": 9,
-            "架构": 9,
-            "内网IP": 14,
-            "外网IP": 14,
-            "开放端口": 13,
-            "主机名": 16,
-            "操作系统": 16,
-            "内核版本": 15,
-            "所属服务": 18,
-            "备注": 14,
-            "添加时间": 16,
-            "修改时间": 16,
+        # 按参考报表固定列宽；动态选择列时仍按字段名称取得相同宽度。
+        column_widths = {
+            "序号": 7.5, "主机名": 16, "内网IP": 18, "外网IP": 21,
+            "开放端口": 22, "环境": 13, "状态": 10, "CPU": 9,
+            "内存": 10, "数据盘": 10, "架构": 13, "操作系统": 34,
+            "内核版本": 22, "所属服务": 19, "备注": 29,
+            "添加时间": 21, "修改时间": 21,
         }
+        for col_idx, col_name in enumerate(export_headers, 1):
+            ws.column_dimensions[get_column_letter(col_idx)].width = column_widths.get(col_name, 20)
 
-        for col_idx, col in enumerate(ws.columns, 1):
-            col_name = export_headers[col_idx - 1] if col_idx - 1 < len(export_headers) else ""
-            default_min = min_col_widths.get(col_name, 10)
-            max_len = 0
-            col_letter = get_column_letter(col[0].column)
-            for cell in col:
-                val = str(cell.value or "")
-                try:
-                    val_len = len(val.encode('gbk', 'ignore'))
-                except Exception:
-                    val_len = len(val)
-                max_len = max(max_len, val_len)
-            ws.column_dimensions[col_letter].width = max(max_len + 3, default_min)
+        def display_width(value: str) -> int:
+            return sum(2 if unicodedata.east_asian_width(char) in "FW" else 1 for char in value)
 
-        # 5. 视图交互增强: 开启筛选器、冻结首行、显示网格线
+        for row in ws.iter_rows(min_row=2):
+            line_count = 1
+            for cell in row:
+                if not cell.value:
+                    continue
+                width = max(1, ws.column_dimensions[cell.column_letter].width - 4)
+                wrapped_lines = sum(
+                    max(1, math.ceil(display_width(part) / width))
+                    for part in str(cell.value).splitlines()
+                )
+                line_count = max(line_count, wrapped_lines)
+            ws.row_dimensions[row[0].row].height = max(34, min(112, 16 * line_count + 12))
+
+        # 筛选、冻结和打印设置。
         ws.freeze_panes = "A2"
         if ws.max_row > 1 and export_headers:
             ws.auto_filter.ref = f"A1:{get_column_letter(len(export_headers))}{ws.max_row}"
+            filterable_keys = {"env", "status", "cpu_cores", "memory_gb", "disk_gb", "os", "clusters"}
+            for col_idx, key in enumerate(export_keys):
+                if key not in filterable_keys:
+                    ws.auto_filter.filterColumn.append(
+                        FilterColumn(colId=col_idx, hiddenButton=True, showButton=False)
+                    )
         if ws.views.sheetView:
-            ws.views.sheetView[0].showGridLines = True
+            ws.views.sheetView[0].showGridLines = False
+        ws.sheet_properties.pageSetUpPr.fitToPage = True
+        ws.page_setup.orientation = "landscape"
+        ws.page_setup.fitToWidth = 1
+        ws.page_setup.fitToHeight = 0
+        ws.print_title_rows = "1:1"
 
         wb.save(output)
         content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

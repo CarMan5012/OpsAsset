@@ -228,6 +228,7 @@ const previewTotal = ref(0)
 // 打开弹窗方法
 const open = (options = {}) => {
   const { filters = {}, ids = [] } = options
+  Object.keys(currentFilters).forEach(key => delete currentFilters[key])
   Object.assign(currentFilters, filters)
   selectedIds.value = ids || []
   previewPage.value = 1

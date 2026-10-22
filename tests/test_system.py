@@ -581,9 +581,9 @@ def test_excel_styling_features():
 
     # 验证冻结首行
     assert exp_ws.freeze_panes == "A2"
-    # 验证表头背景色
+    # 导出报表使用浅灰蓝表头，导入模板仍保留深蓝样式。
     exp_header_fill = exp_ws.cell(row=1, column=1).fill.start_color.rgb
-    assert "1E293B" in str(exp_header_fill).upper()
+    assert "E9EEF3" in str(exp_header_fill).upper()
 
 
 def test_invalid_export_ids_do_not_export_all_hosts():

@@ -1450,6 +1450,21 @@
   transition: background-color 160ms ease, box-shadow 160ms ease;
 }
 
+.host-filter-bar .host-keyword-search .el-textarea__inner {
+  min-height: 36px !important;
+  padding: 8px 12px;
+  line-height: 20px;
+  resize: none;
+  background: #f8fafc;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #dbe3ed inset;
+}
+
+.host-filter-bar .host-keyword-search .el-textarea__inner:focus {
+  background: #fff;
+  box-shadow: 0 0 0 1px #2563eb inset, 0 0 0 3px rgba(37, 99, 235, .12);
+}
+
 .tab-pane > .ops-card > .filter-bar .el-input__wrapper:hover,
 .tab-pane > .ops-card > .filter-bar .el-select__wrapper:hover {
   background: #fff;
